@@ -1,12 +1,12 @@
 # End-User License Agreement (EULA)
 
-**For "shed" – by Shed LLC**
+**For "shed" – by Hector Friedman-Cintron**
 
 ---
 
 ## IMPORTANT NOTICE
 
-This End-User License Agreement ("Agreement" or "EULA") is a legal contract between **you** (either as an individual or entity) and **Shed LLC**, governing your use of the **"shed"** software and related components ("Software").
+This End-User License Agreement ("Agreement" or "EULA") is a legal contract between **you** (either as an individual or entity) and **Hector Friedman-Cintron**, governing your use of the **"shed"** software and related components ("Software").
 
 By installing, copying, or otherwise using the Software, you agree to be bound by the terms of this Agreement. If you do not agree to the terms of this Agreement, **do not install or use the Software**.
 
@@ -16,7 +16,7 @@ By installing, copying, or otherwise using the Software, you agree to be bound b
 
 ### 1.1 General Use
 
-Shed LLC grants you a **non-exclusive, non-transferable, limited license** to install and use the Software in accordance with the license type you have purchased. This Software is **licensed, not sold**.
+Hector Friedman-Cintron grants you a **non-exclusive, non-transferable, limited license** to install and use the Software in accordance with the license type you have purchased. This Software is **licensed, not sold**.
 
 ### 1.2 Individual License
 
@@ -36,7 +36,7 @@ If you have purchased an **Embedding License**, you may include "shed" within a 
 
 - The CLI tool is not exposed for standalone use by end users;
 - It is only used internally or by licensed users;
-- You notify Shed LLC of any known or suspected unauthorized distribution.
+- You notify Hector Friedman-Cintron of any known or suspected unauthorized distribution.
 
 You owe **no royalties** under this license, but are responsible for customer compliance.
 
@@ -56,7 +56,7 @@ You may receive **source code** to create Modifications.
 
 - **Modification** = any addition to, deletion from, or derivative work based on the original Software.
 
-You retain rights to your original code in Modifications, but all rights to the base Software and combined works belong to Shed LLC.
+You retain rights to your original code in Modifications, but all rights to the base Software and combined works belong to Hector Friedman-Cintron.
 
 ---
 
@@ -78,7 +78,7 @@ You agree **not** to:
 
 ## 4. Ownership
 
-This is a **license**, not a sale. Shed LLC retains **all rights, title, and interest** in the Software, including all intellectual property.
+This is a **license**, not a sale. Hector Friedman-Cintron retains **all rights, title, and interest** in the Software, including all intellectual property.
 
 ---
 
@@ -86,13 +86,13 @@ This is a **license**, not a sale. Shed LLC retains **all rights, title, and int
 
 Fees are due at purchase unless stated otherwise. Refunds may be requested within 14 days if the Software fails to function and support cannot resolve the issue.
 
-You are responsible for all taxes, duties, or levies, except those based on Shed LLC’s net income.
+You are responsible for all taxes, duties, or levies, except those based on Hector Friedman-Cintron’s net income.
 
 ---
 
 ## 6. Support and Maintenance
 
-Support is available in accordance with your license type and Shed LLC’s published support policy.
+Support is available in accordance with your license type and Hector Friedman-Cintron’s published support policy.
 
 Access to updates, patches, or new releases may be tied to an active subscription or maintenance agreement.
 
@@ -133,7 +133,7 @@ Use of the Software is at your own risk.
 
 ## 9. Limitation of Liability
 
-Shed LLC is **not liable** for any indirect, incidental, special, or consequential damages.
+Hector Friedman-Cintron is **not liable** for any indirect, incidental, special, or consequential damages.
 
 Total liability is limited to the amount paid for the Software.
 
@@ -152,11 +152,11 @@ Your exclusive remedy is limited to:
 
 ### 11.1 Data Use
 
-You consent to Shed LLC collecting anonymized technical data solely for improving the product and troubleshooting.
+You consent to Hector Friedman-Cintron collecting anonymized technical data solely for improving the product and troubleshooting.
 
 ### 11.2 License Verification
 
-Shed LLC may audit your use of the Software. If unauthorized use is discovered, you agree to pay applicable licensing fees and audit costs.
+Hector Friedman-Cintron may audit your use of the Software. If unauthorized use is discovered, you agree to pay applicable licensing fees and audit costs.
 
 ### 11.3 Government Use
 
@@ -172,11 +172,11 @@ If acquired by a U.S. Government agency, the Software is classified as **“comm
 
 ## 13. Miscellaneous
 
-- **13.1 Entire Agreement**: This Agreement constitutes the full and complete understanding between you and Shed LLC.
-- **13.2 Amendments**: Shed LLC may update this Agreement with notice. Continued use constitutes acceptance.
+- **13.1 Entire Agreement**: This Agreement constitutes the full and complete understanding between you and Hector Friedman-Cintron.
+- **13.2 Amendments**: Hector Friedman-Cintron may update this Agreement with notice. Continued use constitutes acceptance.
 - **13.3 Assignment**: You may not assign this license without written consent.
 - **13.4 Export**: You agree to comply with all export laws and regulations.
-- **13.5 Indemnification**: You agree to indemnify Shed LLC against claims arising from your misuse of the Software.
+- **13.5 Indemnification**: You agree to indemnify Hector Friedman-Cintron against claims arising from your misuse of the Software.
 - **13.6 Governing Law**: This Agreement is governed by the laws of Oregon, USA. Jurisdiction resides in Portland, Oregon.
 - **13.7 Legal Fees**: The prevailing party in any legal action may recover attorney’s fees.
 - **13.8 Severability**: If any provision is found unenforceable, the remainder of the Agreement remains in effect.
