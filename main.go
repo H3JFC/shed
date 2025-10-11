@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"h3jfc/shed/cmd"
 	sheddb "h3jfc/shed/db"
+	"h3jfc/shed/lib/config"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -18,8 +18,7 @@ import (
 )
 
 var (
-	targetVersion = 1
-	// ErrDirtyMigration error when a migration has errored and needs to be fixed.
+	targetVersion     = 1
 	ErrDirtyMigration = errors.New("migration is dirty, intervention is needed")
 )
 
@@ -36,11 +35,22 @@ func checkErr(err error) {
 }
 
 func migrateSqlite3() error {
-	dir, err := os.UserHomeDir()
-	checkErr(err)
+	// Ensure .shed directory exists
+	shedDir, err := config.GetShedDir()
+	if err != nil {
+		return fmt.Errorf("failed to get shed directory: %w", err)
+	}
+
+	if err := os.MkdirAll(shedDir, 0755); err != nil {
+		return fmt.Errorf("failed to create .shed directory: %w", err)
+	}
 
 	key := "my_secret_key" // In a real application, use a secure method to manage encryption keys.
-	dbPath := filepath.Join(dir, "sqlite3.db")
+	dbPath, err := config.GetDatabasePath()
+	if err != nil {
+		return fmt.Errorf("failed to get database path: %w", err)
+	}
+
 	dbname := fmt.Sprintf("file:%s?_key=%s&_cipher_page_size=%d", dbPath, key, 4096)
 
 	db, err := sql.Open("sqlite3", dbname)

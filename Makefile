@@ -1,4 +1,4 @@
-.PHONY: all help deps build shed install
+.PHONY: all help deps build shed install lint
 
 COMMIT := $(shell git rev-parse --short HEAD)
 GOOS := darwin
@@ -14,6 +14,7 @@ help:
 	@echo "  make deps    - Check dependencies"
 	@echo "  make build   - Build the application with SQLCipher support to ./shed"
 	@echo "  make shed    - Run the application with SQLCipher support"
+	@echo "  make lint    - Format and lint code using golangci-lint"
 	@echo "  make sqlc    - Generate sqlc code"
 
 build: deps
@@ -29,6 +30,12 @@ install: deps
 	@echo "Building and installing $(BINARY_NAME) with SQLCipher support to system..."
 	go install -tags="sqlcipher" .
 	@echo "✅ Installed $(BINARY_NAME) to system PATH"
+
+lint:
+	@echo "Formatting and linting code with golangci-lint..."
+	@hash golangci-lint > /dev/null 2>&1 || (echo "Install golangci-lint to continue: https://golangci-lint.run/usage/install/"; exit 1)
+	golangci-lint run --config .golangci.yaml
+	@echo "✅ Code formatting and linting completed"
 
 deps:
 	@echo "Checking dependencies..."
