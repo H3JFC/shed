@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"h3jfc/shed/lib/config"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"h3jfc/shed/lib/config"
 )
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "shed",
 	Short: "A brief description of your application",

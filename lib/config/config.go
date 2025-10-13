@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,15 +9,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config holds the application configuration
+const (
+	permDir os.FileMode = 0o755
+)
+
+// Config holds the application configuration.
 type Config struct {
-	Version string // Hardcoded version, not from TOML
-	Foobar  string // Value from TOML configuration
+	Version string `json:"version"` // Hardcoded version, not from TOML
+	Foobar  string `json:"foobar"`  // Value from TOML configuration
 }
 
 var cfg *Config
 
-// Init initializes the configuration system
+// Init initializes the configuration system.
 func Init() error {
 	// Set up Viper
 	viper.SetConfigName("shed")
@@ -30,9 +35,9 @@ func Init() error {
 		return fmt.Errorf("failed to get user home directory: %w", err)
 	}
 
-	// Create .shed directory if it doesn't exist
+	// Create .shed directory if it doesn't exist.
 	shedDir := filepath.Join(homeDir, ".shed")
-	if err := os.MkdirAll(shedDir, 0755); err != nil {
+	if err := os.MkdirAll(shedDir, permDir); err != nil {
 		return fmt.Errorf("failed to create .shed directory: %w", err)
 	}
 
@@ -44,7 +49,7 @@ func Init() error {
 
 	// Read config file (it's okay if it doesn't exist)
 	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			return fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
@@ -58,32 +63,35 @@ func Init() error {
 	return nil
 }
 
-// Get returns the current configuration
+// Get returns the current configuration.
 func Get() *Config {
 	if cfg == nil {
 		// Initialize with defaults if not already initialized
 		cfg = &Config{
-			Version: "1.0.0",
+			Version: "0.1.0",
 			Foobar:  "default_foobar_value",
 		}
 	}
+
 	return cfg
 }
 
-// GetShedDir returns the .shed directory path
+// GetShedDir returns the .shed directory path.
 func GetShedDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %w", err)
 	}
+
 	return filepath.Join(homeDir, ".shed"), nil
 }
 
-// GetDatabasePath returns the database file path
+// GetDatabasePath returns the database file path.
 func GetDatabasePath() (string, error) {
 	shedDir, err := GetShedDir()
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(shedDir, "sheddb"), nil
 }

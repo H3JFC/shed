@@ -173,6 +173,10 @@ linters:
           - gofumpt
         text: "File is not properly formatted"
         source: "^import \\("
+      # Allow go.mod replacement directives for SQLCipher fork
+      - linters:
+          - gomoddirectives
+        text: "replacement are not allowed"
 issues:
   # Maximum issues count per one linter.
   # Set to 0 to disable.
@@ -212,11 +216,12 @@ issues:
 formatters:
   # Enable specific formatter.
   # Default: [] (uses standard Go formatting)
+  # Order matters: goimports -> gci -> gofumpt -> gofmt
   enable:
-    - gci
-    - gofmt
-    - gofumpt
     - goimports
+    - gci
+    - gofumpt
+    - gofmt
   # Formatters settings.
   settings:
     gofumpt:
@@ -225,26 +230,20 @@ formatters:
       # Set the Go version for gofumpt
       lang-version: "1.25"
       # Set module path to help with import grouping
-      module-path: splay
+      module-path: h3jfc
     goimports:
       # Put imports beginning with prefix after 3rd-party packages.
       # It's a comma-separated list of prefixes.
       local-prefixes:
-        - splay
+        - h3jfc
     gci:
       # Define the order and types of import sections
       sections:
         - standard
         - default
-        - prefix(splay)
-        - blank
-        - dot
-        - alias
-        - localmodule
-      no-inline-comments: true
-      no-prefix-comments: true
+        - prefix(h3jfc)
+      # Simplified settings to work better with gofumpt
       custom-order: true
-      # Skip generated files to avoid conflicts
       skip-generated: true
   exclusions:
     # Mode of the generated files analysis.
@@ -315,4 +314,3 @@ run:
   # Default: 0 (automatically set to match Linux container CPU quota and
   # fall back to the number of logical CPUs in the machine)
   concurrency: 4
-
