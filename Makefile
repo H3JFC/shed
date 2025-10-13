@@ -1,14 +1,34 @@
-.PHONY: all help deps
+.PHONY: all help deps build shed install
 
 COMMIT := $(shell git rev-parse --short HEAD)
-GOOS := linux
+GOOS := darwin
 GOARCH := arm64
+BINARY_NAME := shed
 
-all: help
+all: install
 
 help:
 	@echo "Available targets:"
-	@echo "  make deps"
+	@echo "  make         - Build and install shed to system (same as make install)"
+	@echo "  make install - Build and install shed to system PATH"
+	@echo "  make deps    - Check dependencies"
+	@echo "  make build   - Build the application with SQLCipher support to ./shed"
+	@echo "  make shed    - Run the application with SQLCipher support"
+	@echo "  make sqlc    - Generate sqlc code"
+
+build: deps
+	@echo "Building $(BINARY_NAME) with SQLCipher support..."
+	go build -tags="sqlcipher" -o ./$(BINARY_NAME) main.go
+	@echo "✅ Built $(BINARY_NAME) successfully"
+
+shed: deps
+	@echo "Running application with SQLCipher support..."
+	go run -tags="sqlcipher" main.go
+
+install: deps
+	@echo "Building and installing $(BINARY_NAME) with SQLCipher support to system..."
+	go install -tags="sqlcipher" .
+	@echo "✅ Installed $(BINARY_NAME) to system PATH"
 
 deps:
 	@echo "Checking dependencies..."

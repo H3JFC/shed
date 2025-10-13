@@ -39,7 +39,11 @@ func migrateSqlite3() error {
 	dir, err := os.UserHomeDir()
 	checkErr(err)
 
-	db, err := sql.Open("sqlite3", filepath.Join(dir, "sqlite3.db"))
+	key := "my_secret_key" // In a real application, use a secure method to manage encryption keys.
+	dbPath := filepath.Join(dir, "sqlite3.db")
+	dbname := fmt.Sprintf("file:%s?_key=%s&_cipher_page_size=%d", dbPath, key, 4096)
+
+	db, err := sql.Open("sqlite3", dbname)
 	if err != nil {
 		return err
 	}
