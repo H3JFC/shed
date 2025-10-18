@@ -227,8 +227,6 @@ formatters:
     gofumpt:
       # Choose whether or not to use the extra rules that are disabled by default
       extra-rules: false
-      # Set the Go version for gofumpt
-      lang-version: "1.25"
       # Set module path to help with import grouping
       module-path: h3jfc
     goimports:
@@ -244,7 +242,6 @@ formatters:
         - prefix(h3jfc)
       # Simplified settings to work better with gofumpt
       custom-order: true
-      skip-generated: true
   exclusions:
     # Mode of the generated files analysis.
     #
@@ -298,7 +295,7 @@ run:
   #
   # Allowed values: readonly|vendor|mod
   # Default: ""
-  modules-download-mode:
+  modules-download-mode: readonly
   # Allow multiple parallel golangci-lint instances running.
   # If false, golangci-lint acquires file lock on start.
   # Default: false
