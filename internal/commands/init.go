@@ -5,6 +5,8 @@ import (
 	"errors"
 )
 
+var ErrNotImplemented = errors.New("not implemented yet")
+
 func Init(_ context.Context) error {
-	return errors.New("not implemented yet")
+	return ErrNotImplemented
 }

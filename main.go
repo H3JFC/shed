@@ -17,6 +17,7 @@ const (
 
 func main() {
 	fmt.Println(runtime.GOOS)
+
 	if err := sqlite3.Migrate(defaultEncryptionKey); err != nil {
 		return
 	}

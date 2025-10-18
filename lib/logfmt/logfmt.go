@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// LogMode defines the logging output format
+// LogMode defines the logging output format.
 type LogMode string
 
 const (
@@ -17,7 +17,7 @@ const (
 	ModeMessageOnly  LogMode = "message-only"
 )
 
-// ANSI color codes
+// ANSI color codes.
 const (
 	colorReset  = "\033[0m"
 	colorRed    = "\033[31m"
@@ -27,7 +27,7 @@ const (
 	colorGray   = "\033[90m"
 )
 
-// CustomHandler implements slog.Handler with different modes
+// CustomHandler implements slog.Handler with different modes.
 type CustomHandler struct {
 	w     io.Writer
 	mode  LogMode
@@ -35,7 +35,7 @@ type CustomHandler struct {
 	group string
 }
 
-// NewCustomHandler creates a new handler with the specified mode
+// NewCustomHandler creates a new handler with the specified mode.
 func NewCustomHandler(w io.Writer, mode LogMode) *CustomHandler {
 	return &CustomHandler{
 		w:    w,
@@ -62,6 +62,7 @@ func (h *CustomHandler) Handle(_ context.Context, r slog.Record) error {
 	}
 
 	_, err := h.w.Write([]byte(output + "\n"))
+
 	return err
 }
 
@@ -71,17 +72,21 @@ func (h *CustomHandler) formatMessageLevel(r slog.Record) string {
 
 	// Add any additional attributes
 	attrs := ""
+
 	r.Attrs(func(a slog.Attr) bool {
 		if attrs != "" {
 			attrs += " "
 		}
+
 		attrs += fmt.Sprintf("%s=%v", a.Key, a.Value)
+
 		return true
 	})
 
 	if attrs != "" {
 		return fmt.Sprintf("%s %s: %s", level, msg, attrs)
 	}
+
 	return fmt.Sprintf("%s %s", level, msg)
 }
 
@@ -92,17 +97,21 @@ func (h *CustomHandler) formatVerbose(r slog.Record) string {
 
 	// Add any additional attributes
 	attrs := ""
+
 	r.Attrs(func(a slog.Attr) bool {
 		if attrs != "" {
 			attrs += " "
 		}
+
 		attrs += fmt.Sprintf("%s=%v", a.Key, a.Value)
+
 		return true
 	})
 
 	if attrs != "" {
 		return fmt.Sprintf("[%s][%s][%s] %s", timestamp, level, msg, attrs)
 	}
+
 	return fmt.Sprintf("[%s][%s][%s]", timestamp, level, msg)
 }
 
@@ -112,17 +121,21 @@ func (h *CustomHandler) formatMessageOnly(r slog.Record) string {
 
 	// Add any additional attributes
 	attrs := ""
+
 	r.Attrs(func(a slog.Attr) bool {
 		if attrs != "" {
 			attrs += " "
 		}
+
 		attrs += fmt.Sprintf("%s=%v", a.Key, a.Value)
+
 		return true
 	})
 
 	if attrs != "" {
 		return fmt.Sprintf("%s %s", msg, attrs)
 	}
+
 	return msg
 }
 

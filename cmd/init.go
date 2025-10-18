@@ -36,7 +36,7 @@ func getLogMode(mode string) LogMode {
 	}
 }
 
-var logger = slog.New(NewCustomHandler(os.Stdout, getLogMode(logModeFlag)))
+var logger = slog.New(NewCustomHandler(os.Stdout, getLogMode(logModeFlag))).
 */
 var logger = slog.New(
 	sf.NewFormatterHandler(
@@ -55,7 +55,8 @@ var initCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		// 1. Detect OS
-		// 2. Based on OS check all possible default locatins for existing config and tell there user a configuration exists and where
+		// 2. Based on OS check all possible default locatins for existing config and
+		//    tell there user a configuration exists and where
 		// 3. If non exist, Based on OS offer locations
 		// 	a. Windows: %USERPROFILE%\.shed or %APPDATA%\.shed
 		// 	b. MacOS: $HOME/.shed or $HOME/.config/shed or /etc/shed
