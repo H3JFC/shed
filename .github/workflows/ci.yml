@@ -68,6 +68,7 @@ jobs:
           echo "Note: SQLCipher may require manual setup on Windows"
 
       - name: Run tests with coverage
+        shell: bash
         env:
           BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
         run: |
@@ -127,6 +128,7 @@ jobs:
           echo "Note: SQLCipher may require manual setup on Windows"
 
       - name: Build binary
+        shell: bash
         env:
           BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
         run: go build -tags="${BUILD_TAGS}" -o ${{ matrix.binary-name }} main.go
