@@ -1,4 +1,4 @@
-.PHONY: all help deps build shed install lint lint-fix lint-new lint-coverage
+.PHONY: all help deps build shed install lint lint-fix lint-new test test-coverage
 
 COMMIT := $(shell git rev-parse --short HEAD)
 GOOS := darwin
@@ -14,10 +14,11 @@ help:
 	@echo "  make deps    - Check dependencies"
 	@echo "  make build   - Build the application with SQLCipher support to ./shed"
 	@echo "  make shed    - Run the application with SQLCipher support"
+	@echo "  make test    - Run all Go tests"
+	@echo "  make test-coverage - Run tests with coverage analysis"
 	@echo "  make lint    - Format and lint code using golangci-lint (parallel)"
 	@echo "  make lint-fix - Format and lint code with auto-fix enabled (parallel)"
 	@echo "  make lint-new - Lint only new/changed code"
-	@echo "  make lint-coverage - Run tests with coverage analysis"
 	@echo "  make sqlc    - Generate sqlc code"
 
 build: deps
@@ -51,7 +52,12 @@ lint-new: deps
 	golangci-lint run --new --config .golangci.yaml --allow-parallel-runners
 	@echo "✅ New code linting completed"
 
-lint-coverage: deps
+test: deps
+	@echo "Running all Go tests..."
+	go test -tags="sqlcipher" -v ./...
+	@echo "✅ All tests completed"
+
+test-coverage: deps
 	@echo "Running tests with coverage analysis..."
 	go test -tags="sqlcipher" -coverprofile=coverage.out -covermode=atomic ./...
 	go tool cover -html=coverage.out -o coverage.html

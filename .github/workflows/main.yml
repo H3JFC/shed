@@ -1,0 +1,20 @@
+name: Main Branch CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  cancel-previous-runs:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: main-${{ github.workflow }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+  ci:
+    needs: cancel-previous-runs
+    uses: ./.github/workflows/ci.yml
