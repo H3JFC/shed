@@ -13,20 +13,19 @@ import (
 	_ "github.com/mattn/go-sqlite3" // Register SQLite3 driver with SQLCipher support
 
 	sheddb "h3jfc/shed/db"
-	"h3jfc/shed/lib/config"
+	"h3jfc/shed/internal/config"
 )
 
 const (
 	defaultTargetVersion  = 1
 	defaultDirPerms       = 0o755
 	defaultCipherPageSize = 4096
-	defaultEncryptionKey  = "my_secret_key" // In a real application, use a secure method to manage encryption keys.
 )
 
 var ErrDirtyMigration = errors.New("migration is dirty, intervention is needed")
 
-func Migrate() error {
-	db, err := SetupDatabase()
+func Migrate(encryptionKey string) error {
+	db, err := SetupDatabase(encryptionKey)
 	if err != nil {
 		return err
 	}
@@ -40,7 +39,7 @@ func Migrate() error {
 	return runMigrations(m)
 }
 
-func SetupDatabase() (*sql.DB, error) {
+func SetupDatabase(encryptionKey string) (*sql.DB, error) {
 	if err := ensureShedDirectoryExists(); err != nil {
 		return nil, err
 	}
@@ -50,7 +49,7 @@ func SetupDatabase() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to get database path: %w", err)
 	}
 
-	dbname := fmt.Sprintf("file:%s?_key=%s&_cipher_page_size=%d", dbPath, defaultEncryptionKey, defaultCipherPageSize)
+	dbname := fmt.Sprintf("file:%s?_key=%s&_cipher_page_size=%d", dbPath, encryptionKey, defaultCipherPageSize)
 
 	db, err := sql.Open("sqlite3", dbname)
 	if err != nil {

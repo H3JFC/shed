@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"h3jfc/shed/lib/config"
+	"h3jfc/shed/internal/config"
 )
 
 // addCmd represents the add command.

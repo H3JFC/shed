@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"h3jfc/shed/lib/config"
+	"h3jfc/shed/internal/config"
 )
 
 // rootCmd represents the base command when called without any subcommands.
@@ -43,7 +43,7 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.shed/shed.toml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.shed/shed.toml)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
