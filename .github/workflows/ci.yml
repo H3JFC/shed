@@ -62,15 +62,18 @@ jobs:
 
       - name: Install SQLCipher (Windows)
         if: matrix.os == 'windows-latest'
-        shell: powershell
+        shell: bash
         run: |
-          choco install sqlite --version=3.41.2 -y
-          echo "Note: SQLCipher may require manual setup on Windows"
+          # Install MSYS2 packages
+          C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-sqlcipher
 
       - name: Run tests with coverage
         shell: bash
         env:
           BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
+          CGO_CFLAGS: ${{ matrix.os == 'windows-latest' && '-IC:/msys64/mingw64/include' || '' }}
+          CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}
+          PATH: ${{ matrix.os == 'windows-latest' && 'C:/msys64/mingw64/bin;C:/msys64/usr/bin' || '' }}:$PATH
         run: |
           go test -tags="${BUILD_TAGS}" -coverprofile=coverage.out -covermode=atomic ./...
           go tool cover -html=coverage.out -o coverage.html
@@ -122,15 +125,18 @@ jobs:
 
       - name: Install SQLCipher (Windows)
         if: matrix.os == 'windows-latest'
-        shell: powershell
+        shell: bash
         run: |
-          choco install sqlite --version=3.41.2 -y
-          echo "Note: SQLCipher may require manual setup on Windows"
+          # Install MSYS2 packages
+          C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-sqlcipher
 
       - name: Build binary
         shell: bash
         env:
           BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
+          CGO_CFLAGS: ${{ matrix.os == 'windows-latest' && '-IC:/msys64/mingw64/include' || '' }}
+          CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}
+          PATH: ${{ matrix.os == 'windows-latest' && 'C:/msys64/mingw64/bin;C:/msys64/usr/bin' || '' }}:$PATH
         run: go build -tags="${BUILD_TAGS}" -o ${{ matrix.binary-name }} main.go
 
       - name: Upload binary artifact
