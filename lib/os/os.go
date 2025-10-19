@@ -1,5 +1,7 @@
 package os
 
+import "runtime"
+
 type (
 	OS int
 )
@@ -45,4 +47,8 @@ func ToOS(os string) OS {
 	}
 
 	return Unknown
+}
+
+func Detect() OS {
+	return ToOS(runtime.GOOS)
 }

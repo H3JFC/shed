@@ -1,9 +1,25 @@
 .PHONY: all help deps build shed install lint lint-fix lint-new test test-coverage
 
 COMMIT := $(shell git rev-parse --short HEAD)
-GOOS := darwin
+GOOS := $(shell go env GOOS)
 GOARCH := arm64
 BINARY_NAME := shed
+
+# Detect OS and set build tag (linux, darwin, or windows)
+UNAME_S := $(shell uname -s 2>/dev/null || echo "unknown")
+ifeq ($(UNAME_S),Linux)
+	OS_TAG := linux
+else ifeq ($(UNAME_S),Darwin)
+	OS_TAG := darwin
+else ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
+	OS_TAG := windows
+else ifeq ($(findstring MSYS,$(UNAME_S)),MSYS)
+	OS_TAG := windows
+else ifeq ($(findstring CYGWIN,$(UNAME_S)),CYGWIN)
+	OS_TAG := windows
+else
+	OS_TAG := $(GOOS)
+endif
 
 all: install
 
@@ -54,12 +70,12 @@ lint-new: deps
 
 test: deps
 	@echo "Running all Go tests..."
-	go test -tags="sqlcipher" -v ./...
+	go test -tags="sqlcipher,$(OS_TAG)" -v ./...
 	@echo "✅ All tests completed"
 
 test-coverage: deps
 	@echo "Running tests with coverage analysis..."
-	go test -tags="sqlcipher" -coverprofile=coverage.out -covermode=atomic ./...
+	go test -tags="sqlcipher,$(OS_TAG)" -coverprofile=coverage.out -covermode=atomic ./...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "✅ Coverage analysis completed"
 	@echo "📊 Coverage report: coverage.html"
