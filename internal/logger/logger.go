@@ -1,10 +1,12 @@
-package logfmt
+package logger
 
 import (
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"sync"
 	"time"
 )
 
@@ -27,6 +29,14 @@ const (
 	colorGray   = "\033[90m"
 )
 
+var (
+	instance *slog.Logger
+	once     sync.Once
+	mu       sync.RWMutex
+	writer   io.Writer = os.Stdout
+	mode               = ModeMessageLevel
+)
+
 // CustomHandler implements slog.Handler with different modes.
 type CustomHandler struct {
 	w     io.Writer
@@ -43,8 +53,13 @@ func NewCustomHandler(w io.Writer, mode LogMode) *CustomHandler {
 	}
 }
 
-func (h *CustomHandler) Enabled(_ context.Context, _ slog.Level) bool {
-	return true
+func (h *CustomHandler) Enabled(_ context.Context, level slog.Level) bool {
+	// In verbose mode, enable debug and up
+	if h.mode == ModeVerbose {
+		return true
+	}
+	// In other modes, only Info and up
+	return level >= slog.LevelInfo
 }
 
 func (h *CustomHandler) Handle(_ context.Context, r slog.Record) error {
@@ -69,7 +84,6 @@ func (h *CustomHandler) Handle(_ context.Context, r slog.Record) error {
 func (h *CustomHandler) formatMessageLevel(r slog.Record) string {
 	level := h.getLevelWithColor(r.Level)
 	msg := r.Message
-
 	// Add any additional attributes
 	attrs := ""
 
@@ -91,10 +105,9 @@ func (h *CustomHandler) formatMessageLevel(r slog.Record) string {
 }
 
 func (h *CustomHandler) formatVerbose(r slog.Record) string {
-	timestamp := r.Time.Format(time.RFC3339Nano)
+	timestamp := r.Time.Truncate(time.Microsecond).Format(time.RFC3339Nano)
 	level := h.getLevelWithColor(r.Level)
 	msg := r.Message
-
 	// Add any additional attributes
 	attrs := ""
 
@@ -118,7 +131,6 @@ func (h *CustomHandler) formatVerbose(r slog.Record) string {
 func (h *CustomHandler) formatMessageOnly(r slog.Record) string {
 	// Just the message, no level or timestamp
 	msg := r.Message
-
 	// Add any additional attributes
 	attrs := ""
 
@@ -174,4 +186,80 @@ func (h *CustomHandler) WithGroup(name string) slog.Handler {
 		attrs: h.attrs,
 		group: name,
 	}
+}
+
+func ModeFromString(s string) LogMode {
+	switch s {
+	case "verbose":
+		return ModeVerbose
+	case "message-level":
+		return ModeMessageLevel
+	case "message-only":
+		return ModeMessageOnly
+	default:
+		return ModeMessageLevel
+	}
+}
+
+// SetWriter sets the output writer (must be called before Get).
+func SetWriter(w io.Writer) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	writer = w
+}
+
+// SetMode sets the logger mode (must be called before Get).
+func SetMode(m LogMode) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	mode = m
+}
+
+func Get() *slog.Logger {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	instance = slog.New(NewCustomHandler(writer, mode))
+
+	return instance
+}
+
+// New returns the singleton logger instance.
+func New() *slog.Logger {
+	once.Do(func() {
+		mu.RLock()
+
+		w := writer
+		m := mode
+
+		mu.RUnlock()
+
+		instance = slog.New(NewCustomHandler(w, m))
+	})
+
+	mu.RLock()
+	defer mu.RUnlock()
+
+	return instance
+}
+
+// Set allows setting a custom logger (useful for testing).
+func Set(l *slog.Logger) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	instance = l
+}
+
+// Reset resets the singleton (useful for testing).
+func Reset() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	instance = nil
+	once = sync.Once{}
+	writer = os.Stdout
+	mode = ModeMessageLevel
 }
