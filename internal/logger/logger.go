@@ -11,7 +11,10 @@ import (
 )
 
 // LogMode defines the logging output format.
-type LogMode string
+type (
+	LogMode string
+	Logger  = slog.Logger
+)
 
 const (
 	ModeVerbose      LogMode = "verbose"

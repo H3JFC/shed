@@ -2,5 +2,7 @@
 
 package config
 
-func New() {
+var DefaultConfigPaths = []string{
+	"%USERPROFILE%",
+	"%APPDATA%",
 }

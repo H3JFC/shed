@@ -16,8 +16,8 @@ var initCmd = &cobra.Command{
 		l := logger.Get()
 		l.Info("Initializing shed configuration")
 		l.Debug("Debug Init command called")
-		if err := commands.Init(c.Context()); err != nil {
 
+		if err := commands.Init(c.Context()); err != nil {
 			l.Error("Error initializing shed", "error", err)
 
 			return nil

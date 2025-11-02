@@ -7,6 +7,14 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/viper"
+
+	"h3jfc/shed/internal/logger"
+)
+
+var (
+	ErrConfigInvalid   = errors.New("shed configuration is invalid")
+	ErrMultipleConfigs = errors.New("multiple shed configurations found")
+	ErrNoPathFound     = errors.New("no shed configuration path found")
 )
 
 const (
@@ -94,4 +102,65 @@ func GetDatabasePath() (string, error) {
 	}
 
 	return filepath.Join(shedDir, "sheddb"), nil
+}
+
+// FindPath returns the path to the shed configuration.
+// it throws an error if it is not found or if it is invalid.
+func FindPath() (string, error) {
+	p, err := findPathWrap(shedPath, "shedPath")
+	if err == nil {
+		return p, nil
+	}
+
+	return findPathWrap(findDefaultPath, "findDefaultPath")
+}
+
+func shedPath() string {
+	p := os.Getenv("SHED_DIR")
+	if p == "" {
+		logger.Debug("SHED_DIR environment variable not set")
+	} else {
+		logger.Debug("Found SHED_DIR environment variable", "location", p)
+	}
+
+	return p
+}
+
+func findDefaultPath() string {
+	// check which one exists based on priority
+	for _, p := range DefaultConfigPaths {
+		if _, err := os.Stat(p); err == nil {
+			logger.Debug("Existing shed path found", "location", p)
+
+			return p
+		}
+	}
+
+	logger.Debug("No existing shed path found.")
+
+	return ""
+}
+
+func findPathWrap(fp func() string, function string) (string, error) {
+	if p := fp(); p != "" {
+		if isValid := validatePath(p); !isValid {
+			logger.Debug("Shed configuration found but is invalid", "location", p, "function", function)
+
+			return "", fmt.Errorf("%w for function %s", ErrConfigInvalid, function)
+		}
+
+		logger.Debug("Shed is initialized", "location", p, "function", function)
+
+		return p, nil
+	}
+
+	logger.Debug("No shed configuration found in standard locations", "function", function)
+
+	return "", fmt.Errorf("%w for function %s", ErrNoPathFound, function)
+}
+
+// TODO
+func validatePath(p string) bool {
+	// TODO implement validation logic
+	return true
 }

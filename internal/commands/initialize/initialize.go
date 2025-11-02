@@ -3,10 +3,10 @@ package initialize
 import (
 	"context"
 	"errors"
-	"fmt"
-	"os"
 
+	"h3jfc/shed/internal/config"
 	"h3jfc/shed/internal/logger"
+	libos "h3jfc/shed/lib/os"
 )
 
 var (
@@ -19,26 +19,20 @@ var (
 
 // TODO init SQLITE database.
 func Init(_ context.Context) error {
-	l := logger.Get()
-	l.Debug("Starting shed initialization process")
-	l.Debug("Checking for existing shed configuration")
-	l.Debug("Checking SHED_DIR environment variable")
+	logger.Debug("Starting shed initialization process")
+	logger.Debug("Checking for existing shed configuration")
+	logger.Debug("Checking SHED_DIR environment variable")
 
-	location, err := getLocation()
-	if err != nil {
+	p, err := config.FindPath()
+	if err != nil && !errors.Is(err, config.ErrNoPathFound) {
 		return err
 	}
 
-	if location != "" {
-		if isValid := validate(location); isValid {
-			l.Info("Shed is already initialized", "location", location)
+	if err == nil && p != "" {
+		logger.Info("Shed is already initialized at location", "location", p)
+		logger.Debug("Initialization aborted to prevent overwriting existing configuration")
 
-			return nil
-		} else {
-			l.Debug("Shed configuration found but is invalid", "location", location)
-
-			return ErrConfigInvalid
-		}
+		return nil
 	}
 
 	// 3. If non exist, Based on OS offer locations
@@ -50,14 +44,14 @@ func Init(_ context.Context) error {
 
 	selectedLocation, err := promptUserForLocation(userLocations)
 	if err != nil {
-		l.Error("Error selecting location", "error", err)
+		logger.Error("Error selecting location", "error", err)
 
 		return ErrLocationSelection
 	}
 
 	err = createShedDirectory(selectedLocation)
 	if err != nil {
-		l.Error("Error creating shed directory", "error", err)
+		logger.Error("Error creating shed directory", "error", err)
 
 		return ErrDirectoryCreation
 	}
@@ -66,15 +60,15 @@ func Init(_ context.Context) error {
 	// 6. Create a default database file in the selected location
 
 	// 4. Add ShedDirectory to PATH and ask the user to Add to Path based on common shells (bash, zsh, fish, powershell)
-	l.Info("Shed initialized successfully", "location", selectedLocation)
-	l.Info("Please add the following line to your shell configuration file to include Shed in your PATH",
+	logger.Info("Shed initialized successfully", "location", selectedLocation)
+	logger.Info("Please add the following line to your shell configuration file to include Shed in your PATH",
 		"bash/zsh", "export PATH=\"$PATH:"+selectedLocation+"/bin\"",
 		"fish", "set -Ux PATH $PATH "+selectedLocation+"/bin",
 		"powershell", "$env:Path += \";"+selectedLocation+"\\bin\"",
 	) // make tis conditional based on OS and shell detection
 
 	// 7. Add ShedDir to environment variable SHED_DIR
-	l.Info("Please add the following line to your shell configuration file to set SHED_DIR environment variable",
+	logger.Info("Please add the following line to your shell configuration file to set SHED_DIR environment variable",
 		"bash/zsh", "export SHED_DIR=\""+selectedLocation+"\"",
 		"fish", "set -Ux SHED_DIR "+selectedLocation,
 		"powershell", "$env:SHED_DIR = \""+selectedLocation+"\"",
@@ -82,43 +76,7 @@ func Init(_ context.Context) error {
 	return ErrNotImplemented
 }
 
-func getLocation() (string, error) {
-	location := os.Getenv("SHED_DIR")
-	if location != "" {
-		return location, nil
-	}
-
-	var potentialLocations []string
-
-	defaultLocations := getDefaultConfigLocations()
-
-	// check which one exists based on priority
-	for _, loc := range defaultLocations {
-		if _, err := os.Stat(loc); err == nil {
-			location = loc
-			potentialLocations = append(potentialLocations, loc)
-		}
-	}
-
-	l := logger.Get()
-
-	switch len(potentialLocations) {
-	case 0:
-		l.Debug("No existing shed configuration found. Moving to initialization...")
-	case 1:
-		l.Debug("One existing shed configuration found!")
-
-		location = potentialLocations[0]
-	default:
-		l.Debug("Multiple existing shed configurations found", "locations", potentialLocations)
-
-		return location, fmt.Errorf("%w: %v", ErrMultipleConfigs, potentialLocations)
-	}
-
-	return location, nil
-}
-
-func getDefaultConfigLocations() []string {
+func defaultConfigLocations(o libos.OS) []string {
 	panic("implement me")
 	return []string{"~/.shed"}
 }
