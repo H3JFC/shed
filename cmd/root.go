@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"h3jfc/shed/internal/commands"
 	"h3jfc/shed/internal/config"
 	"h3jfc/shed/internal/logger"
 )
@@ -30,6 +32,10 @@ to quickly create a Cobra application.`,
 		}
 		logger.SetMode(logger.ModeFromString(ll))
 		_ = logger.New() // Ensure logger is initialized
+	},
+
+	RunE: func(_ *cobra.Command, _ []string) error {
+		return commands.RootTUI(context.Background())
 	},
 }
 
