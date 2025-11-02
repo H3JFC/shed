@@ -87,6 +87,15 @@ func (h *CustomHandler) formatMessageLevel(r slog.Record) string {
 	// Add any additional attributes
 	attrs := ""
 
+	// Add handler-level attributes first
+	for _, a := range h.attrs {
+		if attrs != "" {
+			attrs += " "
+		}
+
+		attrs += fmt.Sprintf("%s=%v", a.Key, a.Value)
+	}
+
 	r.Attrs(func(a slog.Attr) bool {
 		if attrs != "" {
 			attrs += " "
@@ -111,6 +120,15 @@ func (h *CustomHandler) formatVerbose(r slog.Record) string {
 	// Add any additional attributes
 	attrs := ""
 
+	// Add handler-level attributes first
+	for _, a := range h.attrs {
+		if attrs != "" {
+			attrs += " "
+		}
+
+		attrs += fmt.Sprintf("%s=%v", a.Key, a.Value)
+	}
+
 	r.Attrs(func(a slog.Attr) bool {
 		if attrs != "" {
 			attrs += " "
@@ -133,6 +151,15 @@ func (h *CustomHandler) formatMessageOnly(r slog.Record) string {
 	msg := r.Message
 	// Add any additional attributes
 	attrs := ""
+
+	// Add handler-level attributes first
+	for _, a := range h.attrs {
+		if attrs != "" {
+			attrs += " "
+		}
+
+		attrs += fmt.Sprintf("%s=%v", a.Key, a.Value)
+	}
 
 	r.Attrs(func(a slog.Attr) bool {
 		if attrs != "" {
@@ -219,7 +246,20 @@ func SetMode(m LogMode) {
 
 func Get() *slog.Logger {
 	mu.RLock()
-	defer mu.RUnlock()
+	if instance != nil {
+		mu.RUnlock()
+		return instance
+	}
+	mu.RUnlock()
+
+	// Need write lock to create instance
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if instance != nil {
+		return instance
+	}
 
 	instance = slog.New(NewCustomHandler(writer, mode))
 
@@ -262,4 +302,66 @@ func Reset() {
 	once = sync.Once{}
 	writer = os.Stdout
 	mode = ModeMessageLevel
+}
+
+// Package-level logging functions that always use the current instance.
+
+// Debug logs a debug message with optional key-value pairs.
+func Debug(msg string, args ...any) {
+	Get().Debug(msg, args...)
+}
+
+// Info logs an info message with optional key-value pairs.
+func Info(msg string, args ...any) {
+	Get().Info(msg, args...)
+}
+
+// Warn logs a warning message with optional key-value pairs.
+func Warn(msg string, args ...any) {
+	Get().Warn(msg, args...)
+}
+
+// Error logs an error message with optional key-value pairs.
+func Error(msg string, args ...any) {
+	Get().Error(msg, args...)
+}
+
+// DebugContext logs a debug message with context and optional key-value pairs.
+func DebugContext(ctx context.Context, msg string, args ...any) {
+	Get().DebugContext(ctx, msg, args...)
+}
+
+// InfoContext logs an info message with context and optional key-value pairs.
+func InfoContext(ctx context.Context, msg string, args ...any) {
+	Get().InfoContext(ctx, msg, args...)
+}
+
+// WarnContext logs a warning message with context and optional key-value pairs.
+func WarnContext(ctx context.Context, msg string, args ...any) {
+	Get().WarnContext(ctx, msg, args...)
+}
+
+// ErrorContext logs an error message with context and optional key-value pairs.
+func ErrorContext(ctx context.Context, msg string, args ...any) {
+	Get().ErrorContext(ctx, msg, args...)
+}
+
+// Log logs at the specified level with optional key-value pairs.
+func Log(ctx context.Context, level slog.Level, msg string, args ...any) {
+	Get().Log(ctx, level, msg, args...)
+}
+
+// LogAttrs logs at the specified level with attributes.
+func LogAttrs(ctx context.Context, level slog.Level, msg string, attrs ...slog.Attr) {
+	Get().LogAttrs(ctx, level, msg, attrs...)
+}
+
+// With returns a Logger that includes the given attributes.
+func With(args ...any) *slog.Logger {
+	return Get().With(args...)
+}
+
+// WithGroup returns a Logger that starts a group.
+func WithGroup(name string) *slog.Logger {
+	return Get().WithGroup(name)
 }

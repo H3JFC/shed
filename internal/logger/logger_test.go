@@ -2,14 +2,14 @@ package logger
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"strings"
 	"sync"
 	"testing"
 )
 
-func TestNew_ReturnsSameInstance(t *testing.T) {
-	t.Parallel()
+func TestNew_ReturnsSameInstance(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	logger1 := New()
@@ -20,8 +20,7 @@ func TestNew_ReturnsSameInstance(t *testing.T) {
 	}
 }
 
-func TestNew_WritesToConfiguredWriter(t *testing.T) {
-	t.Parallel()
+func TestNew_WritesToConfiguredWriter(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	var buf bytes.Buffer
@@ -36,8 +35,7 @@ func TestNew_WritesToConfiguredWriter(t *testing.T) {
 	}
 }
 
-func TestModeVerbose_ShowsDebugMessages(t *testing.T) {
-	t.Parallel()
+func TestModeVerbose_ShowsDebugMessages(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	var buf bytes.Buffer
@@ -62,8 +60,7 @@ func TestModeVerbose_ShowsDebugMessages(t *testing.T) {
 	}
 }
 
-func TestModeMessageLevel_FiltersDebugMessages(t *testing.T) {
-	t.Parallel()
+func TestModeMessageLevel_FiltersDebugMessages(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	var buf bytes.Buffer
@@ -88,8 +85,7 @@ func TestModeMessageLevel_FiltersDebugMessages(t *testing.T) {
 	}
 }
 
-func TestModeMessageOnly_FiltersDebugMessages(t *testing.T) {
-	t.Parallel()
+func TestModeMessageOnly_FiltersDebugMessages(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	var buf bytes.Buffer
@@ -110,8 +106,7 @@ func TestModeMessageOnly_FiltersDebugMessages(t *testing.T) {
 	}
 }
 
-func TestModeMessageLevel_ShowsLevelAndMessage(t *testing.T) {
-	t.Parallel()
+func TestModeMessageLevel_ShowsLevelAndMessage(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	var buf bytes.Buffer
@@ -136,8 +131,7 @@ func TestModeMessageLevel_ShowsLevelAndMessage(t *testing.T) {
 	}
 }
 
-func TestModeVerbose_ShowsTimestampLevelMessage(t *testing.T) {
-	t.Parallel()
+func TestModeVerbose_ShowsTimestampLevelMessage(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	var buf bytes.Buffer
@@ -161,8 +155,7 @@ func TestModeVerbose_ShowsTimestampLevelMessage(t *testing.T) {
 	}
 }
 
-func TestModeMessageOnly_ShowsOnlyMessage(t *testing.T) {
-	t.Parallel()
+func TestModeMessageOnly_ShowsOnlyMessage(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	var buf bytes.Buffer
@@ -187,8 +180,7 @@ func TestModeMessageOnly_ShowsOnlyMessage(t *testing.T) {
 	}
 }
 
-func TestLoggerWithAttributes(t *testing.T) {
-	t.Parallel()
+func TestLoggerWithAttributes(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	var buf bytes.Buffer
@@ -212,8 +204,7 @@ func TestLoggerWithAttributes(t *testing.T) {
 	}
 }
 
-func TestLogLevels_AllWork(t *testing.T) {
-	t.Parallel()
+func TestLogLevels_AllWork(t *testing.T) { // nolint:paralleltest
 	Reset()
 
 	var buf bytes.Buffer
@@ -264,5 +255,202 @@ func TestConcurrentNew(t *testing.T) { // nolint:paralleltest
 
 			break
 		}
+	}
+}
+
+// Tests for package-level functions
+
+func TestPackageLevel_Info(t *testing.T) { // nolint:paralleltest
+	Reset()
+
+	var buf bytes.Buffer
+	SetWriter(&buf)
+	SetMode(ModeMessageLevel)
+
+	Info("package level info")
+
+	output := buf.String()
+	if !strings.Contains(output, "package level info") {
+		t.Errorf("Expected output to contain 'package level info', got: %s", output)
+	}
+
+	if !strings.Contains(output, "INFO") {
+		t.Errorf("Expected output to contain 'INFO', got: %s", output)
+	}
+}
+
+func TestPackageLevel_Debug(t *testing.T) { // nolint:paralleltest
+	Reset()
+
+	var buf bytes.Buffer
+	SetWriter(&buf)
+	SetMode(ModeVerbose)
+
+	Debug("package level debug")
+
+	output := buf.String()
+	if !strings.Contains(output, "package level debug") {
+		t.Errorf("Expected output to contain 'package level debug', got: %s", output)
+	}
+
+	if !strings.Contains(output, "DEBUG") {
+		t.Errorf("Expected output to contain 'DEBUG', got: %s", output)
+	}
+}
+
+func TestPackageLevel_Warn(t *testing.T) { // nolint:paralleltest
+	Reset()
+
+	var buf bytes.Buffer
+	SetWriter(&buf)
+	SetMode(ModeMessageLevel)
+
+	Warn("package level warn")
+
+	output := buf.String()
+	if !strings.Contains(output, "package level warn") {
+		t.Errorf("Expected output to contain 'package level warn', got: %s", output)
+	}
+
+	if !strings.Contains(output, "WARN") {
+		t.Errorf("Expected output to contain 'WARN', got: %s", output)
+	}
+}
+
+func TestPackageLevel_Error(t *testing.T) { // nolint:paralleltest
+	Reset()
+
+	var buf bytes.Buffer
+	SetWriter(&buf)
+	SetMode(ModeMessageLevel)
+
+	Error("package level error")
+
+	output := buf.String()
+	if !strings.Contains(output, "package level error") {
+		t.Errorf("Expected output to contain 'package level error', got: %s", output)
+	}
+
+	if !strings.Contains(output, "ERROR") {
+		t.Errorf("Expected output to contain 'ERROR', got: %s", output)
+	}
+}
+
+func TestPackageLevel_WithAttributes(t *testing.T) { // nolint:paralleltest
+	Reset()
+
+	var buf bytes.Buffer
+	SetWriter(&buf)
+	SetMode(ModeMessageLevel)
+
+	Info("message with attrs", "user", "alice", "count", 10)
+
+	output := buf.String()
+	if !strings.Contains(output, "message with attrs") {
+		t.Errorf("Expected output to contain message, got: %s", output)
+	}
+
+	if !strings.Contains(output, "user=alice") {
+		t.Errorf("Expected output to contain user=alice, got: %s", output)
+	}
+
+	if !strings.Contains(output, "count=10") {
+		t.Errorf("Expected output to contain count=10, got: %s", output)
+	}
+}
+
+func TestPackageLevel_Context(t *testing.T) { // nolint:paralleltest
+	Reset()
+
+	var buf bytes.Buffer
+	SetWriter(&buf)
+	SetMode(ModeMessageLevel)
+
+	ctx := context.Background()
+	InfoContext(ctx, "context message")
+
+	output := buf.String()
+	if !strings.Contains(output, "context message") {
+		t.Errorf("Expected output to contain 'context message', got: %s", output)
+	}
+
+	if !strings.Contains(output, "INFO") {
+		t.Errorf("Expected output to contain 'INFO', got: %s", output)
+	}
+}
+
+func TestPackageLevel_With(t *testing.T) { // nolint:paralleltest
+	Reset()
+
+	var buf bytes.Buffer
+	SetWriter(&buf)
+	SetMode(ModeMessageLevel)
+
+	childLogger := With("component", "auth")
+	childLogger.Info("authentication started")
+
+	output := buf.String()
+	if !strings.Contains(output, "authentication started") {
+		t.Errorf("Expected output to contain message, got: %s", output)
+	}
+
+	if !strings.Contains(output, "component=auth") {
+		t.Errorf("Expected output to contain component=auth, got: %s", output)
+	}
+}
+
+func TestPackageLevel_WithGroup(t *testing.T) { // nolint:paralleltest
+	Reset()
+
+	var buf bytes.Buffer
+	SetWriter(&buf)
+	SetMode(ModeMessageLevel)
+
+	groupLogger := WithGroup("request")
+	groupLogger.Info("request received", "method", "GET")
+
+	output := buf.String()
+	if !strings.Contains(output, "request received") {
+		t.Errorf("Expected output to contain message, got: %s", output)
+	}
+}
+
+func TestPackageLevel_AlwaysUsesCurrentInstance(t *testing.T) { // nolint:paralleltest
+	Reset()
+
+	var buf1 bytes.Buffer
+	SetWriter(&buf1)
+	SetMode(ModeMessageLevel)
+
+	// Initialize first instance
+	Info("first message")
+
+	// Create a new instance by resetting and reconfiguring
+	Reset()
+
+	var buf2 bytes.Buffer
+	SetWriter(&buf2)
+	SetMode(ModeMessageOnly)
+
+	// Package-level function should use the new instance
+	Info("second message")
+
+	output1 := buf1.String()
+	if !strings.Contains(output1, "first message") {
+		t.Errorf("Expected first buffer to contain 'first message', got: %s", output1)
+	}
+
+	if !strings.Contains(output1, "INFO") {
+		t.Errorf("Expected first buffer to contain 'INFO', got: %s", output1)
+	}
+
+	output2 := buf2.String()
+	if !strings.Contains(output2, "second message") {
+		t.Errorf("Expected second buffer to contain 'second message', got: %s", output2)
+	}
+
+	// Second should NOT contain INFO (message-only mode)
+	if strings.Contains(output2, "INFO") {
+		t.Errorf("Expected second buffer to NOT contain 'INFO' in message-only mode, got: %s", output2)
 	}
 }
