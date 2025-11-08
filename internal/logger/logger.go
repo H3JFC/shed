@@ -249,10 +249,13 @@ func SetMode(m LogMode) {
 
 func Get() *slog.Logger {
 	mu.RLock()
+
 	if instance != nil {
 		mu.RUnlock()
+
 		return instance
 	}
+
 	mu.RUnlock()
 
 	// Need write lock to create instance

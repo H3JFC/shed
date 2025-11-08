@@ -73,17 +73,16 @@ func Init(_ context.Context) error {
 		"fish", "set -Ux SHED_DIR "+dir,
 		"powershell", "$env:SHED_DIR = \""+dir+"\"",
 	) // make tis conditional based on OS and shell detection
+
 	return ErrNotImplemented
 }
 
 func defaultConfigLocations(o libos.OS) []string {
 	panic("implement me")
-	return []string{"~/.shed"}
 }
 
 func validate(loc string) bool {
 	panic("implement me")
-	return false
 }
 
 func getPotentialLocations() []string {
@@ -99,13 +98,16 @@ func promptUserDir(locations []string) (string, error) {
 
 	// Display the list of locations
 	fmt.Println("Please select a configuration location:")
+
 	for i, location := range locations {
 		fmt.Printf("%d) %s\n", i+1, location)
 	}
+
 	fmt.Print("\nEnter your choice (number): ")
 
 	// Read user input
 	reader := bufio.NewReader(os.Stdin)
+
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		return "", fmt.Errorf("failed to read input: %w", err)
@@ -113,9 +115,10 @@ func promptUserDir(locations []string) (string, error) {
 
 	// Parse the input
 	input = strings.TrimSpace(input)
+
 	choice, err := strconv.Atoi(input)
 	if err != nil {
-		return "", fmt.Errorf("invalid input: please enter a number")
+		return "", errors.New("invalid input: please enter a number")
 	}
 
 	// Validate the choice
@@ -127,15 +130,18 @@ func promptUserDir(locations []string) (string, error) {
 }
 
 func promptUserDirWithRetry(locations []string, maxAttempts int) (string, error) {
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt := range maxAttempts {
 		location, err := promptUserDir(locations)
 		if err == nil {
 			return location, nil
 		}
+
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+
 		if attempt < maxAttempts-1 {
 			fmt.Println("Please try again.")
 		}
 	}
-	return "", fmt.Errorf("max attempts reached")
+
+	return "", errors.New("max attempts reached")
 }

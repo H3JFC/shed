@@ -200,5 +200,4 @@ func validatePath(p string) bool {
 
 func Create(location string) error {
 	panic("implement me")
-	return nil
 }
