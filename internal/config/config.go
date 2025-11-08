@@ -104,18 +104,18 @@ func GetDatabasePath() (string, error) {
 	return filepath.Join(shedDir, "sheddb"), nil
 }
 
-// FindPath returns the path to the shed configuration.
+// FindDir returns the path to the shed configuration.
 // it throws an error if it is not found or if it is invalid.
-func FindPath() (string, error) {
-	p, err := findPathWrap(shedPath, "shedPath")
+func FindDir() (string, error) {
+	p, err := findDirWrap(shedDir, "shedDir")
 	if err == nil {
 		return p, nil
 	}
 
-	return findPathWrap(findDefaultPath, "findDefaultPath")
+	return findDirWrap(findDefaultDir, "findDefaultDir")
 }
 
-func shedPath() string {
+func shedDir() string {
 	p := os.Getenv("SHED_DIR")
 	if p == "" {
 		logger.Debug("SHED_DIR environment variable not set")
@@ -126,7 +126,7 @@ func shedPath() string {
 	return p
 }
 
-func findDefaultPath() string {
+func findDefaultDir() string {
 	// check which one exists based on priority
 	for _, p := range DefaultConfigPaths {
 		if _, err := os.Stat(p); err == nil {
@@ -141,7 +141,7 @@ func findDefaultPath() string {
 	return ""
 }
 
-func findPathWrap(fp func() string, function string) (string, error) {
+func findDirWrap(fp func() string, function string) (string, error) {
 	if p := fp(); p != "" {
 		if isValid := validatePath(p); !isValid {
 			logger.Debug("Shed configuration found but is invalid", "location", p, "function", function)
@@ -159,8 +159,46 @@ func findPathWrap(fp func() string, function string) (string, error) {
 	return "", fmt.Errorf("%w for function %s", ErrNoPathFound, function)
 }
 
-// TODO
 func validatePath(p string) bool {
-	// TODO implement validation logic
-	return true
+	// Check if the provided path is a directory
+	info, err := os.Stat(p)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+
+	// Check if SQLite database file exists
+	dbPath := filepath.Join(p, "shed.db") // or whatever your db filename is
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return false
+	}
+
+	// Check if config.toml exists
+	configPath := filepath.Join(p, "config.toml")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return false
+	}
+
+	// Validate config.toml structure using viper
+	v := viper.New()
+	v.SetConfigFile(configPath)
+	v.SetConfigType("toml")
+
+	if err := v.ReadInConfig(); err != nil {
+		return false
+	}
+
+	// Validate required [shed_db] section and password field
+	if !v.IsSet("shed_db.password") {
+		return false
+	}
+
+	// Optional: Validate that password is not empty
+	password := v.GetString("shed_db.password")
+
+	return password != ""
+}
+
+func Create(location string) error {
+	panic("implement me")
+	return nil
 }
