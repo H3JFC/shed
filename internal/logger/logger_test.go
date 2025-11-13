@@ -12,8 +12,8 @@ import (
 func TestNew_ReturnsSameInstance(t *testing.T) { // nolint:paralleltest
 	Reset()
 
-	logger1 := New()
-	logger2 := New()
+	logger1 := New(ModeMessageLevel)
+	logger2 := New(ModeMessageLevel)
 
 	if logger1 != logger2 {
 		t.Error("New() should return the same instance")
@@ -26,7 +26,7 @@ func TestNew_WritesToConfiguredWriter(t *testing.T) { // nolint:paralleltest
 	var buf bytes.Buffer
 	SetWriter(&buf)
 
-	logger := New()
+	logger := New(ModeMessageLevel)
 	logger.Info("test message")
 
 	output := buf.String()
@@ -40,9 +40,8 @@ func TestModeVerbose_ShowsDebugMessages(t *testing.T) { // nolint:paralleltest
 
 	var buf bytes.Buffer
 	SetWriter(&buf)
-	SetMode(ModeVerbose)
 
-	logger := New()
+	logger := New(ModeVerbose)
 	logger.Debug("debug message")
 	logger.Info("info message")
 
@@ -65,9 +64,8 @@ func TestModeMessageLevel_FiltersDebugMessages(t *testing.T) { // nolint:paralle
 
 	var buf bytes.Buffer
 	SetWriter(&buf)
-	SetMode(ModeMessageLevel)
 
-	logger := New()
+	logger := New(ModeMessageLevel)
 	logger.Debug("debug message")
 	logger.Info("info message")
 
@@ -90,9 +88,8 @@ func TestModeMessageOnly_FiltersDebugMessages(t *testing.T) { // nolint:parallel
 
 	var buf bytes.Buffer
 	SetWriter(&buf)
-	SetMode(ModeMessageOnly)
 
-	logger := New()
+	logger := New(ModeMessageOnly)
 	logger.Debug("debug message")
 	logger.Info("info message")
 
@@ -111,9 +108,8 @@ func TestModeMessageLevel_ShowsLevelAndMessage(t *testing.T) { // nolint:paralle
 
 	var buf bytes.Buffer
 	SetWriter(&buf)
-	SetMode(ModeMessageLevel)
 
-	logger := New()
+	logger := New(ModeMessageLevel)
 	logger.Info("test message")
 
 	output := buf.String()
@@ -136,9 +132,8 @@ func TestModeVerbose_ShowsTimestampLevelMessage(t *testing.T) { // nolint:parall
 
 	var buf bytes.Buffer
 	SetWriter(&buf)
-	SetMode(ModeVerbose)
 
-	logger := New()
+	logger := New(ModeVerbose)
 	logger.Info("test message")
 
 	output := buf.String()
@@ -160,9 +155,8 @@ func TestModeMessageOnly_ShowsOnlyMessage(t *testing.T) { // nolint:paralleltest
 
 	var buf bytes.Buffer
 	SetWriter(&buf)
-	SetMode(ModeMessageOnly)
 
-	logger := New()
+	logger := New(ModeMessageOnly)
 	logger.Info("just message")
 
 	output := buf.String()
@@ -185,9 +179,8 @@ func TestLoggerWithAttributes(t *testing.T) { // nolint:paralleltest
 
 	var buf bytes.Buffer
 	SetWriter(&buf)
-	SetMode(ModeMessageLevel)
 
-	logger := New()
+	logger := New(ModeMessageLevel)
 	logger.Info("test message", "key", "value", "number", 42)
 
 	output := buf.String()
@@ -209,9 +202,8 @@ func TestLogLevels_AllWork(t *testing.T) { // nolint:paralleltest
 
 	var buf bytes.Buffer
 	SetWriter(&buf)
-	SetMode(ModeVerbose)
 
-	logger := New()
+	logger := New(ModeVerbose)
 	logger.Debug("debug")
 	logger.Info("info")
 	logger.Warn("warn")
@@ -242,7 +234,7 @@ func TestConcurrentNew(t *testing.T) { // nolint:paralleltest
 		go func(index int) {
 			defer wg.Done()
 
-			loggers[index] = New()
+			loggers[index] = New(ModeMessageLevel)
 		}(i)
 	}
 

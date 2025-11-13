@@ -273,7 +273,9 @@ func Get() *slog.Logger {
 }
 
 // New returns the singleton logger instance.
-func New() *slog.Logger {
+func New(m LogMode) *slog.Logger {
+	SetMode(m)
+
 	once.Do(func() {
 		mu.RLock()
 

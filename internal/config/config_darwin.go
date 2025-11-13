@@ -2,7 +2,9 @@
 
 package config
 
+import "os"
+
 var DefaultConfigPaths = []string{
-	"$HOME/.shed",
-	"$HOME/.config/shed",
+	os.ExpandEnv("$HOME/.shed"),
+	os.ExpandEnv("$HOME/.config/shed"),
 }

@@ -6,42 +6,27 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
 	"h3jfc/shed/internal/config"
 	"h3jfc/shed/internal/logger"
-	libos "h3jfc/shed/lib/os"
 )
 
 const retryAttempts = 3
 
 var (
-	ErrNotImplemented    = errors.New("not implemented yet")
-	ErrConfigInvalid     = errors.New("shed configuration is invalid")
-	ErrLocationSelection = errors.New("error selecting shed location")
-	ErrDirectoryCreation = errors.New("error creating shed directory")
-	ErrMultipleConfigs   = errors.New("multiple shed configurations found")
+	ErrNotImplemented     = errors.New("not implemented yet")
+	ErrConfigInvalid      = errors.New("shed configuration is invalid")
+	ErrLocationSelection  = errors.New("error selecting shed location")
+	ErrDirectoryCreation  = errors.New("error creating shed directory")
+	ErrMultipleConfigs    = errors.New("multiple shed configurations found")
+	ErrMaxAttemptsReached = errors.New("maximum attempts reached for location selection")
 )
 
-// TODO init SQLITE database.
 func Init(_ context.Context) error {
-	logger.Debug("Starting shed initialization process")
-	logger.Debug("Checking for existing shed configuration")
-	logger.Debug("Checking SHED_DIR environment variable")
-
-	p, err := config.FindDir()
-	if err != nil && !errors.Is(err, config.ErrNoPathFound) {
-		return err
-	}
-
-	if err == nil && p != "" {
-		logger.Info("Shed is already initialized at location", "location", p)
-		logger.Debug("Initialization aborted to prevent overwriting existing configuration")
-
-		return nil
-	}
-
 	dir, err := promptUserDirWithRetry(config.DefaultConfigPaths, retryAttempts)
 	if err != nil {
 		logger.Error("Error selecting location", "error", err)
@@ -49,44 +34,16 @@ func Init(_ context.Context) error {
 		return ErrLocationSelection
 	}
 
-	err = config.Create(dir)
-	if err != nil {
-		logger.Error("Error creating shed directory", "error", err)
+	if err := config.CreateShedDirectory(dir); err != nil {
+		logger.Error("Error creating shed directory and db", "error", err)
+		os.RemoveAll(dir) // cleanup on failure
 
 		return ErrDirectoryCreation
 	}
 
-	// 5. Create a default config file in the selected location
-	// 6. Create a default database file in the selected location
+	logShellInstructions(dir)
 
-	// 4. Add ShedDirectory to PATH and ask the user to Add to Path based on common shells (bash, zsh, fish, powershell)
-	logger.Info("Shed initialized successfully", "location", dir)
-	logger.Info("Please add the following line to your shell configuration file to include Shed in your PATH",
-		"bash/zsh", "export PATH=\"$PATH:"+dir+"/bin\"",
-		"fish", "set -Ux PATH $PATH "+dir+"/bin",
-		"powershell", "$env:Path += \";"+dir+"\\bin\"",
-	) // make tis conditional based on OS and shell detection
-
-	// 7. Add ShedDir to environment variable SHED_DIR
-	logger.Info("Please add the following line to your shell configuration file to set SHED_DIR environment variable",
-		"bash/zsh", "export SHED_DIR=\""+dir+"\"",
-		"fish", "set -Ux SHED_DIR "+dir,
-		"powershell", "$env:SHED_DIR = \""+dir+"\"",
-	) // make tis conditional based on OS and shell detection
-
-	return ErrNotImplemented
-}
-
-func defaultConfigLocations(o libos.OS) []string {
-	panic("implement me")
-}
-
-func validate(loc string) bool {
-	panic("implement me")
-}
-
-func getPotentialLocations() []string {
-	return config.DefaultConfigPaths
+	return nil
 }
 
 func promptUserDir(locations []string) (string, error) {
@@ -143,5 +100,101 @@ func promptUserDirWithRetry(locations []string, maxAttempts int) (string, error)
 		}
 	}
 
-	return "", errors.New("max attempts reached")
+	return "", ErrMaxAttemptsReached
+}
+
+func logShellInstructions(dir string) {
+	logger.Info("Shed initialized successfully", "location", dir)
+
+	shells := detectShellsByConfigFiles()
+
+	if len(shells) == 1 {
+		// Only one shell detected - provide specific instructions
+		shell := shells[0]
+		shedDirInstr, shedDirConfig := getShedDirInstruction(dir, shell)
+
+		logger.Info(fmt.Sprintf("Detected %s - set SHED_DIR:", shell),
+			"instruction", shedDirInstr,
+			"config_file", shedDirConfig,
+		)
+	} else {
+		// Multiple shells detected - provide all instructions
+		logger.Info(fmt.Sprintf("Detected shells: %v - set SHED_DIR:", shells))
+
+		for _, shell := range shells {
+			shedDirInstr, shedDirConfig := getShedDirInstruction(dir, shell)
+			logger.Info("  "+shell,
+				"instruction", shedDirInstr,
+				"config_file", shedDirConfig,
+			)
+		}
+	}
+}
+
+// detectShellsByConfigFiles checks which shell config files exist.
+func detectShellsByConfigFiles() []string {
+	if runtime.GOOS == "windows" {
+		return []string{"powershell"}
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return []string{"bash"} // fallback
+	}
+
+	shellConfigs := map[string][]string{
+		"bash": {
+			filepath.Join(homeDir, ".bashrc"),
+			filepath.Join(homeDir, ".bash_profile"),
+			filepath.Join(homeDir, ".profile"),
+		},
+		"zsh": {
+			filepath.Join(homeDir, ".zshrc"),
+			filepath.Join(homeDir, ".zshenv"),
+		},
+		"fish": {
+			filepath.Join(homeDir, ".config", "fish", "config.fish"),
+		},
+	}
+
+	var detected []string
+
+	for shell, paths := range shellConfigs {
+		for _, path := range paths {
+			if _, err := os.Stat(path); err == nil {
+				detected = append(detected, shell)
+
+				break // found one config for this shell, move to next
+			}
+		}
+	}
+
+	// If nothing detected, default to bash
+	if len(detected) == 0 {
+		detected = []string{"bash"}
+	}
+
+	return detected
+}
+
+// getShedDirInstruction returns the appropriate SHED_DIR instruction for a shell.
+func getShedDirInstruction(dir, shell string) (instruction, configFile string) {
+	switch shell {
+	case "fish":
+		instruction = "set -Ux SHED_DIR " + dir
+		configFile = "~/.config/fish/config.fish"
+	case "zsh":
+		instruction = fmt.Sprintf("export SHED_DIR=\"%s\"", dir)
+		configFile = "~/.zshrc"
+	case "powershell":
+		instruction = fmt.Sprintf("$env:SHED_DIR = \"%s\"", filepath.ToSlash(dir))
+		configFile = "$PROFILE"
+	case "bash":
+		fallthrough
+	default:
+		instruction = fmt.Sprintf("export SHED_DIR=\"%s\"", dir)
+		configFile = "~/.bashrc"
+	}
+
+	return instruction, configFile
 }

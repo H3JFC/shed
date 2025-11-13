@@ -1,4 +1,4 @@
-.PHONY: all help deps build shed install lint lint-fix lint-new test test-coverage
+.PHONY: all help deps debug-build build shed install lint lint-fix lint-new test test-coverage
 
 COMMIT := $(shell git rev-parse --short HEAD)
 GOOS := $(shell go env GOOS)
@@ -39,16 +39,21 @@ help:
 
 build: deps
 	@echo "Building $(BINARY_NAME) with SQLCipher support..."
-	go build -tags="sqlcipher" -o ./$(BINARY_NAME) main.go
+	go build -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/cmd.Commit=$(COMMIT)" -o ./$(BINARY_NAME) main.go
+	@echo "✅ Built $(BINARY_NAME) successfully"
+
+debug-build: deps
+	@echo "Building a debug build of $(BINARY_NAME) with SQLCipher support..."
+	go build -gcflags=all="-N -l" -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/cmd.Commit=$(COMMIT)" -o ./$(BINARY_NAME) main.go
 	@echo "✅ Built $(BINARY_NAME) successfully"
 
 shed: deps
 	@echo "Running application with SQLCipher support..."
-	go run -tags="sqlcipher" main.go
+	go run -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/main.Commit=$(COMMIT)" main.go
 
 install: deps
 	@echo "Building and installing $(BINARY_NAME) with SQLCipher support to system..."
-	go install -tags="sqlcipher" .
+	go install -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/main.Commit=$(COMMIT)" .
 	@echo "✅ Installed $(BINARY_NAME) to system PATH"
 
 lint: deps
@@ -70,7 +75,7 @@ lint-new: deps
 
 test: deps
 	@echo "Running all Go tests..."
-	go test -tags="sqlcipher,$(OS_TAG)" -v ./...
+	go test -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/main.Commit=$(COMMIT)" -v ./...
 	@echo "✅ All tests completed"
 
 test-coverage: deps

@@ -2,7 +2,9 @@
 
 package config
 
+import "os"
+
 var DefaultConfigPaths = []string{
-	"%USERPROFILE%",
-	"%APPDATA%",
+	os.ExpandEnv("%USERPROFILE%"),
+	os.ExpandEnv("%APPDATA%"),
 }
