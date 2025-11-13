@@ -210,6 +210,7 @@ func TestValidatePath(t *testing.T) {
 
 				// Create invalid config.toml without password
 				configPath := filepath.Join(tmpDir, defaultConfigName)
+
 				content := `[shed-db]
 # missing password field
 
@@ -251,6 +252,7 @@ func TestValidatePath(t *testing.T) {
 				t.Helper()
 
 				tmpDir := t.TempDir()
+
 				filePath := filepath.Join(tmpDir, "notadir.txt")
 				if err := createEmptyFile(filePath); err != nil {
 					t.Fatalf("failed to create file: %v", err)
@@ -284,6 +286,7 @@ func TestValidatePath(t *testing.T) {
 
 				// Create invalid TOML
 				configPath := filepath.Join(tmpDir, defaultConfigName)
+
 				content := `[shed_db
 password = "test"  # Missing closing bracket
 `
