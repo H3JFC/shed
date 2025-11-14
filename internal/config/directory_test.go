@@ -129,7 +129,7 @@ func TestShedPath_WithoutEnvironmentVariable(t *testing.T) {
 func TestValidatePath_ValidPath(t *testing.T) {
 	t.Parallel()
 
-	tmpDir := "shed-test-*"
+	tmpDir := t.TempDir()
 
 	setupValidPath(t, tmpDir)
 

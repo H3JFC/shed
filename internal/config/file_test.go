@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -64,8 +65,11 @@ func verifyConfigFile(t *testing.T, tmpDir, password string) {
 		t.Fatalf("failed to stat config file: %v", err)
 	}
 
-	if info.Mode().Perm() != defaultFilePerms {
-		t.Errorf("incorrect file permissions: got %v, want %v", info.Mode().Perm(), defaultFilePerms)
+	// Skip permission check on Windows as it doesn't support Unix-style permissions
+	if runtime.GOOS != "windows" {
+		if info.Mode().Perm() != defaultFilePerms {
+			t.Errorf("incorrect file permissions: got %v, want %v", info.Mode().Perm(), defaultFilePerms)
+		}
 	}
 
 	content, err := os.ReadFile(configPath)
