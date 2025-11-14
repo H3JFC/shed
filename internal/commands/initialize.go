@@ -24,6 +24,8 @@ var (
 	ErrDirectoryCreation  = errors.New("error creating shed directory")
 	ErrMultipleConfigs    = errors.New("multiple shed configurations found")
 	ErrMaxAttemptsReached = errors.New("maximum attempts reached for location selection")
+	ErrInvalidInput       = errors.New("invalid input: please enter a number")
+	ErrInvalidChoice      = errors.New("invalid choice")
 )
 
 func Init(_ context.Context) error {
@@ -75,12 +77,12 @@ func promptUserDir(locations []string) (string, error) {
 
 	choice, err := strconv.Atoi(input)
 	if err != nil {
-		return "", errors.New("invalid input: please enter a number")
+		return "", ErrInvalidInput
 	}
 
 	// Validate the choice
 	if choice < 1 || choice > len(locations) {
-		return "", fmt.Errorf("invalid choice: please select a number between 1 and %d", len(locations))
+		return "", fmt.Errorf("%w: please select a number between 1 and %d", ErrInvalidChoice, len(locations))
 	}
 
 	return locations[choice-1], nil

@@ -24,6 +24,9 @@ var (
 	ErrDirectoryCreation = errors.New("failed to create shed directory")
 	ErrPasswordMismatch  = errors.New("passwords do not match")
 	ErrEmptyPassword     = errors.New("password cannot be empty")
+	ErrNoLocations       = errors.New("no locations provided")
+	ErrInvalidInput      = errors.New("invalid input: please enter a number")
+	ErrInvalidChoice     = errors.New("invalid choice")
 )
 
 // CreateShedDirectory creates the shed directory structure and initializes required files.
@@ -126,7 +129,7 @@ func createEmptyFile(filePath string) error {
 // promptUserForLocation prompts the user to select from a list of locations.
 func promptUserForLocation(locations []string) (string, error) {
 	if len(locations) == 0 {
-		return "", errors.New("no locations provided")
+		return "", ErrNoLocations
 	}
 
 	// Display the list of locations
@@ -151,12 +154,12 @@ func promptUserForLocation(locations []string) (string, error) {
 
 	var choice int
 	if _, err := fmt.Sscanf(input, "%d", &choice); err != nil {
-		return "", errors.New("invalid input: please enter a number")
+		return "", ErrInvalidInput
 	}
 
 	// Validate the choice
 	if choice < 1 || choice > len(locations) {
-		return "", fmt.Errorf("invalid choice: please select a number between 1 and %d", len(locations))
+		return "", fmt.Errorf("%w: please select a number between 1 and %d", ErrInvalidChoice, len(locations))
 	}
 
 	return locations[choice-1], nil

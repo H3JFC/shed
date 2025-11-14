@@ -35,7 +35,6 @@ func TestCreateConfigFile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Create temporary directory
 			tmpDir := t.TempDir()
 
 			err := createConfigFile(tmpDir, tt.password)
@@ -46,33 +45,36 @@ func TestCreateConfigFile(t *testing.T) {
 			}
 
 			if !tt.wantErr {
-				// Verify file was created
-				configPath := filepath.Join(tmpDir, defaultConfigName)
-				if _, err := os.Stat(configPath); os.IsNotExist(err) {
-					t.Error("config file was not created")
-				}
-
-				// Verify file permissions
-				info, err := os.Stat(configPath)
-				if err != nil {
-					t.Fatalf("failed to stat config file: %v", err)
-				}
-
-				if info.Mode().Perm() != defaultFilePerms {
-					t.Errorf("incorrect file permissions: got %v, want %v", info.Mode().Perm(), defaultFilePerms)
-				}
-
-				// Verify content contains password
-				content, err := os.ReadFile(configPath)
-				if err != nil {
-					t.Fatalf("failed to read config file: %v", err)
-				}
-				// Note: This is a simple check; in production you might want to parse TOML
-				if len(tt.password) > 0 && !contains(string(content), tt.password) {
-					t.Error("config file does not contain the password")
-				}
+				verifyConfigFile(t, tmpDir, tt.password)
 			}
 		})
+	}
+}
+
+func verifyConfigFile(t *testing.T, tmpDir, password string) {
+	t.Helper()
+
+	configPath := filepath.Join(tmpDir, defaultConfigName)
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Error("config file was not created")
+	}
+
+	info, err := os.Stat(configPath)
+	if err != nil {
+		t.Fatalf("failed to stat config file: %v", err)
+	}
+
+	if info.Mode().Perm() != defaultFilePerms {
+		t.Errorf("incorrect file permissions: got %v, want %v", info.Mode().Perm(), defaultFilePerms)
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to read config file: %v", err)
+	}
+
+	if len(password) > 0 && !contains(string(content), password) {
+		t.Error("config file does not contain the password")
 	}
 }
 
@@ -137,90 +139,59 @@ func TestCreateEmptyFile(t *testing.T) {
 func TestValidatePath(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	for _, tt := range getValidatePathTests() {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			path := tt.setup(t)
+
+			got := validatePath(path)
+			if got != tt.want {
+				t.Errorf("validatePath() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// nolint:funlen // Test case table is long but necessary for thorough coverage
+func getValidatePathTests() []struct {
+	name  string
+	setup func(*testing.T) string
+	want  bool
+} {
+	return []struct {
 		name  string
 		setup func(*testing.T) string
 		want  bool
 	}{
 		{
-			name: "valid shed directory",
-			setup: func(t *testing.T) string {
-				t.Helper()
-
-				tmpDir := t.TempDir()
-
-				// Create shed.db
-				dbPath := filepath.Join(tmpDir, defaultDBName)
-				if err := createEmptyFile(dbPath); err != nil {
-					t.Fatalf("failed to create db file: %v", err)
-				}
-
-				// Create config.toml with password
-				if err := createConfigFile(tmpDir, "test_password"); err != nil {
-					t.Fatalf("failed to create config file: %v", err)
-				}
-
-				return tmpDir
-			},
-			want: true,
+			name:  "valid shed directory",
+			setup: setupValidShedDir,
+			want:  true,
 		},
 		{
 			name: "missing database file",
 			setup: func(t *testing.T) string {
 				t.Helper()
 
-				tmpDir := t.TempDir()
-
-				// Only create config.toml
-				if err := createConfigFile(tmpDir, "test_password"); err != nil {
-					t.Fatalf("failed to create config file: %v", err)
-				}
-
-				return tmpDir
+				return setupDirWithConfig(t, "test_password")
 			},
 			want: false,
 		},
 		{
-			name: "missing config file",
-			setup: func(t *testing.T) string {
-				t.Helper()
-				tmpDir := t.TempDir()
-
-				// Only create shed.db
-				dbPath := filepath.Join(tmpDir, defaultDBName)
-				if err := createEmptyFile(dbPath); err != nil {
-					t.Fatalf("failed to create db file: %v", err)
-				}
-
-				return tmpDir
-			},
-			want: false,
+			name:  "missing config file",
+			setup: setupDirWithDB,
+			want:  false,
 		},
 		{
 			name: "config missing password field",
 			setup: func(t *testing.T) string {
 				t.Helper()
-				tmpDir := t.TempDir()
 
-				// Create shed.db
-				dbPath := filepath.Join(tmpDir, defaultDBName)
-				if err := createEmptyFile(dbPath); err != nil {
-					t.Fatalf("failed to create db file: %v", err)
-				}
-
-				// Create invalid config.toml without password
-				configPath := filepath.Join(tmpDir, defaultConfigName)
-
-				content := `[shed-db]
+				return setupDirWithInvalidConfig(t, `[shed-db]
 # missing password field
 
 [settings]
-`
-				if err := os.WriteFile(configPath, []byte(content), defaultFilePerms); err != nil {
-					t.Fatalf("failed to create config file: %v", err)
-				}
-
-				return tmpDir
+`)
 			},
 			want: false,
 		},
@@ -231,13 +202,10 @@ func TestValidatePath(t *testing.T) {
 
 				tmpDir := t.TempDir()
 
-				// Create shed.db
-				dbPath := filepath.Join(tmpDir, defaultDBName)
-				if err := createEmptyFile(dbPath); err != nil {
+				if err := createEmptyFile(filepath.Join(tmpDir, defaultDBName)); err != nil {
 					t.Fatalf("failed to create db file: %v", err)
 				}
 
-				// Create config.toml with empty password
 				if err := createConfigFile(tmpDir, ""); err != nil {
 					t.Fatalf("failed to create config file: %v", err)
 				}
@@ -276,40 +244,12 @@ func TestValidatePath(t *testing.T) {
 			setup: func(t *testing.T) string {
 				t.Helper()
 
-				tmpDir := t.TempDir()
-
-				// Create shed.db
-				dbPath := filepath.Join(tmpDir, defaultDBName)
-				if err := createEmptyFile(dbPath); err != nil {
-					t.Fatalf("failed to create db file: %v", err)
-				}
-
-				// Create invalid TOML
-				configPath := filepath.Join(tmpDir, defaultConfigName)
-
-				content := `[shed_db
+				return setupDirWithInvalidConfig(t, `[shed_db
 password = "test"  # Missing closing bracket
-`
-				if err := os.WriteFile(configPath, []byte(content), defaultFilePerms); err != nil {
-					t.Fatalf("failed to create config file: %v", err)
-				}
-
-				return tmpDir
+`)
 			},
 			want: false,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			path := tt.setup(t)
-
-			got := validatePath(path)
-			if got != tt.want {
-				t.Errorf("validatePath() = %v, want %v", got, tt.want)
-			}
-		})
 	}
 }
 
@@ -352,6 +292,70 @@ func TestPromptUserForLocation(t *testing.T) {
 			// For non-empty lists, we can't easily test without mocking stdin
 		})
 	}
+}
+
+// setupValidShedDir creates a valid shed directory with db and config.
+func setupValidShedDir(t *testing.T) string {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+
+	dbPath := filepath.Join(tmpDir, defaultDBName)
+	if err := createEmptyFile(dbPath); err != nil {
+		t.Fatalf("failed to create db file: %v", err)
+	}
+
+	if err := createConfigFile(tmpDir, "test_password"); err != nil {
+		t.Fatalf("failed to create config file: %v", err)
+	}
+
+	return tmpDir
+}
+
+// setupDirWithConfig creates a directory with only a config file.
+func setupDirWithConfig(t *testing.T, password string) string {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+
+	if err := createConfigFile(tmpDir, password); err != nil {
+		t.Fatalf("failed to create config file: %v", err)
+	}
+
+	return tmpDir
+}
+
+// setupDirWithDB creates a directory with only a database file.
+func setupDirWithDB(t *testing.T) string {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+
+	dbPath := filepath.Join(tmpDir, defaultDBName)
+	if err := createEmptyFile(dbPath); err != nil {
+		t.Fatalf("failed to create db file: %v", err)
+	}
+
+	return tmpDir
+}
+
+// setupDirWithInvalidConfig creates a directory with db and invalid config.
+func setupDirWithInvalidConfig(t *testing.T, content string) string {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+
+	dbPath := filepath.Join(tmpDir, defaultDBName)
+	if err := createEmptyFile(dbPath); err != nil {
+		t.Fatalf("failed to create db file: %v", err)
+	}
+
+	configPath := filepath.Join(tmpDir, defaultConfigName)
+	if err := os.WriteFile(configPath, []byte(content), defaultFilePerms); err != nil {
+		t.Fatalf("failed to create config file: %v", err)
+	}
+
+	return tmpDir
 }
 
 // Helper function for string contains check.
