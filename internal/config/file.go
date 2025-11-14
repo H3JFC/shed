@@ -89,7 +89,8 @@ func promptForPassword() (string, error) {
 
 // readPassword reads a password from stdin without echoing.
 func readPassword() (string, error) {
-	bytePassword, err := term.ReadPassword(syscall.Stdin)
+	// nolint:unconvert // Required for Windows compatibility where syscall.Stdin is uintptr
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", fmt.Errorf("failed to read password: %w", err)
 	}
