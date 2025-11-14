@@ -1,0 +1,35 @@
+name: Pull Request CI
+
+on:
+  pull_request:
+    types:
+      - assigned
+      - unassigned
+      - labeled
+      - unlabeled
+      - opened
+      - edited
+      - reopened
+      - synchronize
+      - converted_to_draft
+      - ready_for_review
+      - locked
+      - unlocked
+      - review_requested
+      - review_request_removed
+      - auto_merge_enabled
+      - auto_merge_disabled
+
+jobs:
+  cancel-previous-runs:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pull-request-${{ github.workflow }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+  ci:
+    needs: cancel-previous-runs
+    uses: ./.github/workflows/ci.yml

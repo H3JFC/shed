@@ -1,0 +1,147 @@
+name: CI
+
+on: workflow_call
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install SQLCipher dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlcipher-dev
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          args: --config .golangci.yaml --build-tags=sqlcipher
+
+  test-coverage:
+    name: Test Coverage
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            build-tag: linux
+          - os: macos-latest
+            build-tag: darwin
+          - os: windows-latest
+            build-tag: windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install SQLCipher (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlcipher-dev
+
+      - name: Install SQLCipher (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install sqlcipher
+
+      - name: Install SQLCipher (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          # Install MSYS2 packages
+          C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-sqlcipher
+
+      - name: Run tests with coverage
+        shell: bash
+        env:
+          BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
+          CGO_CFLAGS: ${{ matrix.os == 'windows-latest' && '-IC:/msys64/mingw64/include' || '' }}
+          CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}
+          PATH: ${{ matrix.os == 'windows-latest' && 'C:/msys64/mingw64/bin;C:/msys64/usr/bin' || '' }}:$PATH
+        run: |
+          go test -tags="${BUILD_TAGS}" -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -html=coverage.out -o coverage.html
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-${{ github.sha }}
+          path: |
+            coverage.out
+            coverage.html
+          retention-days: 30
+
+  build:
+    name: Build
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            build-tag: linux
+            binary-name: shed
+          - os: macos-latest
+            build-tag: darwin
+            binary-name: shed
+          - os: windows-latest
+            build-tag: windows
+            binary-name: shed.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install SQLCipher (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlcipher-dev
+
+      - name: Install SQLCipher (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install sqlcipher
+
+      - name: Install SQLCipher (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          # Install MSYS2 packages
+          C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-sqlcipher
+
+      - name: Build binary
+        shell: bash
+        env:
+          BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
+          CGO_CFLAGS: ${{ matrix.os == 'windows-latest' && '-IC:/msys64/mingw64/include' || '' }}
+          CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}
+          PATH: ${{ matrix.os == 'windows-latest' && 'C:/msys64/mingw64/bin;C:/msys64/usr/bin' || '' }}:$PATH
+        run: go build -tags="${BUILD_TAGS}" -o ${{ matrix.binary-name }} main.go
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: shed-${{ matrix.os }}-${{ github.sha }}
+          path: ${{ matrix.binary-name }}
+          retention-days: 30
