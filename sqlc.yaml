@@ -7,3 +7,6 @@ sql:
       go:
         package: "db"
         out: "./db"
+        overrides:
+          - column: "commands.parameters"
+            go_type: "encoding/json.RawMessage"
