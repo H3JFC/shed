@@ -1,6 +1,6 @@
 -- name: CreateCommand :one
-INSERT INTO commands (name, command, parameters)
-VALUES (?, ?, jsonb_array(?))
+INSERT INTO commands (name, command, description, parameters)
+VALUES (?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetCommandByID :one
@@ -21,13 +21,13 @@ ORDER BY created_at DESC;
 
 -- name: UpdateCommand :one
 UPDATE commands
-SET name = ?, command = ?, parameters = jsonb_array(?)
+SET name = ?, command = ?, parameters = ?, description = ?
 WHERE id = ?
 RETURNING *;
 
 -- name: UpdateCommandByName :one
 UPDATE commands
-SET command = ?, parameters = jsonb_array(?)
+SET name = ?, command = ?, parameters = ?, description = ?
 WHERE name = ?
 RETURNING *;
 

@@ -1,27 +1,33 @@
 # TODO LIST
 
-- [] Interpolation Engine
-- [] Require name to be snake_case and restrictions on characters
-- [] Name less than 32 char
-- [] Add Description to commands
-- [] Each Parameter gets a description
-- [] Each Parameter is considered required
-- [] How do I capture optionally describing each parameter?
+- [x] Interpolation Engine
+- [x] Require name to be snake_case and restrictions on characters
+- [x] Name less than 32 char
+- [x] Each Parameter gets a description
+- [x] Each Parameter is considered required
+- [x] How do I capture optionally describing each parameter?
+- [x] Add Description to Commands table
+- [x] SQLC in Github Actions
 
 ## Commands TODO
 
-- [] "shed add <NAME> --description|-d <CLI_COMMAND>"
-  - [] "ERROR ON DUPLICATE NAME"
-- [] "shed cp <SRC_NAME> <DEST_NAME> {\*\*json_kwargs}"
-  - [] "ERROR ON DUPLICATE NAME"
-  - [] "ERROR ON NAME DOES NOT EXIST"
-- [] "shed rm command <NAME>"
-  - [] "ERROR ON NAME DOES NOT EXIST"
-- [] "shed edit command <NAME> --description|-d <CLI_COMMAND>"
-  - [] "ERROR ON NAME DOES NOT EXIST"
-- [] "shed describe command <NAME>"
-  - [] "ERROR ON NAME DOES NOT EXIST"
-- [] "shed list commands"
+### CREATE
+
+- [x] "shed add <NAME> --description|-d <COMMAND_DESCRIPTION> <CLI_COMMAND>"
+- [x] "shed cp <COMMAND_SRC_NAME> <COMMAND_DEST_NAME> {jsonValueParams}" # in form {[<param>]:<value>}
+- [x] "shed rm command <NAME>"
+- [x] "shed list"
+- [x] "shed describe <COMMAND_NAME>"
+- [] "shed edit <COMMAND_NAME> --description|-d <COMMAND_DESCRIPTION> --name|-n <NEW_COMMAND_NAME> <CLI_COMMAND> {jsonValueParams}" # requires implementing a separate store hydrate string method
+
+### Review
+
+- [] shed add
+- [] shed cp
+- [] shed rm
+- [] shed list
+- [] shed edit
+- [] shed describe
 
 ## Examples
 
@@ -138,4 +144,3 @@ And scan into a []byte or json.RawMessage field.
 - MCP Groups in MCP server so you don't host all of your tools
 - Client Server Grouping
   - One Machine to host MCP tools
-  - Other Machine can call MCP tools

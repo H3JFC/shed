@@ -7,27 +7,35 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 )
 
 const createCommand = `-- name: CreateCommand :one
-INSERT INTO commands (name, command, parameters)
-VALUES (?, ?, jsonb_array(?))
-RETURNING id, name, command, parameters, created_at, updated_at
+INSERT INTO commands (name, command, description, parameters)
+VALUES (?, ?, ?, ?)
+RETURNING id, name, command, description, parameters, created_at, updated_at
 `
 
 type CreateCommandParams struct {
-	Name       string
-	Command    string
-	JsonbArray interface{}
+	Name        string
+	Command     string
+	Description string
+	Parameters  json.RawMessage
 }
 
 func (q *Queries) CreateCommand(ctx context.Context, arg CreateCommandParams) (Command, error) {
-	row := q.db.QueryRowContext(ctx, createCommand, arg.Name, arg.Command, arg.JsonbArray)
+	row := q.db.QueryRowContext(ctx, createCommand,
+		arg.Name,
+		arg.Command,
+		arg.Description,
+		arg.Parameters,
+	)
 	var i Command
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Command,
+		&i.Description,
 		&i.Parameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -56,7 +64,7 @@ func (q *Queries) DeleteCommandByName(ctx context.Context, name string) error {
 }
 
 const getCommandByCommand = `-- name: GetCommandByCommand :one
-SELECT id, name, command, parameters, created_at, updated_at FROM commands
+SELECT id, name, command, description, parameters, created_at, updated_at FROM commands
 WHERE command = ?
 `
 
@@ -67,6 +75,7 @@ func (q *Queries) GetCommandByCommand(ctx context.Context, command string) (Comm
 		&i.ID,
 		&i.Name,
 		&i.Command,
+		&i.Description,
 		&i.Parameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -75,7 +84,7 @@ func (q *Queries) GetCommandByCommand(ctx context.Context, command string) (Comm
 }
 
 const getCommandByID = `-- name: GetCommandByID :one
-SELECT id, name, command, parameters, created_at, updated_at FROM commands
+SELECT id, name, command, description, parameters, created_at, updated_at FROM commands
 WHERE id = ?
 `
 
@@ -86,6 +95,7 @@ func (q *Queries) GetCommandByID(ctx context.Context, id int64) (Command, error)
 		&i.ID,
 		&i.Name,
 		&i.Command,
+		&i.Description,
 		&i.Parameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -94,7 +104,7 @@ func (q *Queries) GetCommandByID(ctx context.Context, id int64) (Command, error)
 }
 
 const getCommandByName = `-- name: GetCommandByName :one
-SELECT id, name, command, parameters, created_at, updated_at FROM commands
+SELECT id, name, command, description, parameters, created_at, updated_at FROM commands
 WHERE name = ?
 `
 
@@ -105,6 +115,7 @@ func (q *Queries) GetCommandByName(ctx context.Context, name string) (Command, e
 		&i.ID,
 		&i.Name,
 		&i.Command,
+		&i.Description,
 		&i.Parameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -113,7 +124,7 @@ func (q *Queries) GetCommandByName(ctx context.Context, name string) (Command, e
 }
 
 const listCommands = `-- name: ListCommands :many
-SELECT id, name, command, parameters, created_at, updated_at FROM commands
+SELECT id, name, command, description, parameters, created_at, updated_at FROM commands
 ORDER BY created_at DESC
 `
 
@@ -130,6 +141,7 @@ func (q *Queries) ListCommands(ctx context.Context) ([]Command, error) {
 			&i.ID,
 			&i.Name,
 			&i.Command,
+			&i.Description,
 			&i.Parameters,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -149,23 +161,25 @@ func (q *Queries) ListCommands(ctx context.Context) ([]Command, error) {
 
 const updateCommand = `-- name: UpdateCommand :one
 UPDATE commands
-SET name = ?, command = ?, parameters = jsonb_array(?)
+SET name = ?, command = ?, parameters = ?, description = ?
 WHERE id = ?
-RETURNING id, name, command, parameters, created_at, updated_at
+RETURNING id, name, command, description, parameters, created_at, updated_at
 `
 
 type UpdateCommandParams struct {
-	Name       string
-	Command    string
-	JsonbArray interface{}
-	ID         int64
+	Name        string
+	Command     string
+	Parameters  json.RawMessage
+	Description string
+	ID          int64
 }
 
 func (q *Queries) UpdateCommand(ctx context.Context, arg UpdateCommandParams) (Command, error) {
 	row := q.db.QueryRowContext(ctx, updateCommand,
 		arg.Name,
 		arg.Command,
-		arg.JsonbArray,
+		arg.Parameters,
+		arg.Description,
 		arg.ID,
 	)
 	var i Command
@@ -173,6 +187,7 @@ func (q *Queries) UpdateCommand(ctx context.Context, arg UpdateCommandParams) (C
 		&i.ID,
 		&i.Name,
 		&i.Command,
+		&i.Description,
 		&i.Parameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -182,24 +197,33 @@ func (q *Queries) UpdateCommand(ctx context.Context, arg UpdateCommandParams) (C
 
 const updateCommandByName = `-- name: UpdateCommandByName :one
 UPDATE commands
-SET command = ?, parameters = jsonb_array(?)
+SET name = ?, command = ?, parameters = ?, description = ?
 WHERE name = ?
-RETURNING id, name, command, parameters, created_at, updated_at
+RETURNING id, name, command, description, parameters, created_at, updated_at
 `
 
 type UpdateCommandByNameParams struct {
-	Command    string
-	JsonbArray interface{}
-	Name       string
+	Name        string
+	Command     string
+	Parameters  json.RawMessage
+	Description string
+	Name_2      string
 }
 
 func (q *Queries) UpdateCommandByName(ctx context.Context, arg UpdateCommandByNameParams) (Command, error) {
-	row := q.db.QueryRowContext(ctx, updateCommandByName, arg.Command, arg.JsonbArray, arg.Name)
+	row := q.db.QueryRowContext(ctx, updateCommandByName,
+		arg.Name,
+		arg.Command,
+		arg.Parameters,
+		arg.Description,
+		arg.Name_2,
+	)
 	var i Command
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Command,
+		&i.Description,
 		&i.Parameters,
 		&i.CreatedAt,
 		&i.UpdatedAt,

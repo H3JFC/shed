@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"iter"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
+
+	"h3jfc/shed/lib/itertools"
 )
 
 var (
@@ -16,7 +18,10 @@ var (
 	ErrParameterStartsWithInvalidChar = errors.New("parameter starts with invalid character")
 	ErrParameterContainsSpaces        = errors.New("parameter contains spaces")
 	ErrContainsInvalidSymbols         = errors.New("parameter contains invalid symbols")
+	ErrParameterNotFound              = errors.New("parameter not found")
 )
+
+var spaceRegex = regexp.MustCompile(`\s+`)
 
 const (
 	maxParts       = 2
@@ -84,6 +89,119 @@ func (p *Parameters) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (p *Parameters) ToMap() map[string]string {
+	m := make(map[string]string, len(*p))
+
+	for i := range *p {
+		m[(*p)[i].Name] = (*p)[i].Description
+	}
+
+	return m
+}
+
+func (p *Parameters) Names() []string {
+	names := make([]string, 0, len(*p))
+
+	for i := range *p {
+		names = append(names, (*p)[i].Name)
+	}
+
+	return names
+}
+
+func (p *Parameters) Description(name string) (string, error) {
+	m := p.ToMap()
+
+	if desc, exists := m[name]; exists {
+		return desc, nil
+	}
+
+	return "", fmt.Errorf("%w: %s", ErrParameterNotFound, name)
+}
+
+// Replace updates the description of an existing parameter or appends a new one if it doesn't exist.
+func (p *Parameters) Replace(name, description string) {
+	// Search for existing parameter
+	for i := range *p {
+		if (*p)[i].Name == name {
+			(*p)[i].Description = description
+
+			return
+		}
+	}
+
+	// Parameter not found, append new one
+	*p = append(*p, Parameter{
+		Name:        name,
+		Description: description,
+	})
+
+	// Re-sort to maintain deterministic ordering
+	sort.Slice(*p, func(i, j int) bool {
+		return (*p)[i].Name < (*p)[j].Name
+	})
+}
+
+func (p *Parameters) MergeName(other *Parameters, name string) {
+	if p == nil || other == nil {
+		return
+	}
+
+	otherMap := other.ToMap()
+
+	desc, exists := otherMap[name]
+	if !exists {
+		return
+	}
+
+	p.Replace(name, desc)
+}
+
+func (p *Parameters) ThreeWayMerge(before, updated *Parameters) { // nolint:cyclop
+	if p == nil {
+		return
+	}
+
+	beforeMap := make(map[string]string)
+	if before != nil {
+		beforeMap = before.ToMap()
+	}
+
+	updatedMap := make(map[string]string)
+	if updated != nil {
+		updatedMap = updated.ToMap()
+	}
+
+	for _, name := range p.Names() {
+		priorityDesc, _ := p.Description(name)
+		beforeDesc, existedBefore := beforeMap[name]
+		updatedDesc, existsInUpdated := updatedMap[name]
+
+		// New parameter: take longer of updated or priority
+		if !existedBefore {
+			if existsInUpdated && len(updatedDesc) > len(priorityDesc) {
+				p.Replace(name, updatedDesc)
+			}
+
+			continue
+		}
+
+		// Existing parameter: check what changed
+		priorityChanged := priorityDesc != beforeDesc
+		updatedChanged := existsInUpdated && updatedDesc != beforeDesc
+
+		if priorityChanged && updatedChanged {
+			// Both changed: take longer
+			if len(updatedDesc) > len(priorityDesc) {
+				p.Replace(name, updatedDesc)
+			}
+		} else if updatedChanged {
+			// Only updated changed: take updated
+			p.Replace(name, updatedDesc)
+		}
+	}
+}
+
 // MarshalJSON ensures deterministic ordering by name.
 func (vp ValuedParameters) MarshalJSON() ([]byte, error) {
 	if vp == nil {
@@ -100,7 +218,7 @@ func (vp ValuedParameters) MarshalJSON() ([]byte, error) {
 	})
 
 	// Marshal the sorted slice
-	return json.Marshal([]ValuedParameter(sorted))
+	return json.Marshal(sorted)
 }
 
 // UnmarshalJSON ensures the slice is sorted after unmarshaling.
@@ -185,20 +303,10 @@ func ParametersFromJSON(jsonStr string) (Parameters, error) {
 	return ParametersFromMap(m), nil
 }
 
-func (p Parameters) ToMap() map[string]string {
-	m := make(map[string]string, len(p))
-
-	for i := range p {
-		m[p[i].Name] = p[i].Description
-	}
-
-	return m
-}
-
 func ParseParameters(input string) (Parameters, error) {
 	ss := parseBrackets(input)
 
-	params := Map(slices.Values(ss), func(s string) Parameter {
+	params := itertools.Map(slices.Values(ss), func(s string) Parameter {
 		parts := strings.SplitN(s, "|", maxParts)
 
 		if len(parts) == 1 {
@@ -238,6 +346,60 @@ func ParseParameters(input string) (Parameters, error) {
 	return pp, nil
 }
 
+// ParseCommand normalizes a command string by:
+// - Trimming leading/trailing whitespace
+// - Normalizing spacing inside {{...}} blocks
+// - Normalizing spacing around | separators in parameter descriptions
+// - Collapsing multiple spaces outside {{...}} blocks to single spaces
+func ParseCommand(input string) (string, error) {
+	s := strings.TrimSpace(input)
+	var result strings.Builder
+	result.Grow(len(s))
+
+	var outsideBrackets strings.Builder
+
+	i := 0
+	for i < len(s) {
+		// Look for opening {{
+		if i < len(s)-1 && s[i] == '{' && s[i+1] == '{' {
+			// Flush any accumulated outside content
+			if outsideBrackets.Len() > 0 {
+				normalized := spaceRegex.ReplaceAllString(outsideBrackets.String(), " ")
+				result.WriteString(normalized)
+				outsideBrackets.Reset()
+			}
+
+			result.WriteString("{{")
+			i += 2
+			start := i
+
+			// Find closing }}
+			for i < len(s)-1 {
+				if s[i] == '}' && s[i+1] == '}' {
+					content := s[start:i]
+					normalized := cleanString(content)
+					result.WriteString(normalized)
+					result.WriteString("}}")
+					i += 2
+					break
+				}
+				i++
+			}
+		} else {
+			outsideBrackets.WriteByte(s[i])
+			i++
+		}
+	}
+
+	// Flush any remaining outside content
+	if outsideBrackets.Len() > 0 {
+		normalized := spaceRegex.ReplaceAllString(outsideBrackets.String(), " ")
+		result.WriteString(normalized)
+	}
+
+	return result.String(), nil
+}
+
 func HydrateString(input string, vp ValuedParameters) (string, error) {
 	out := HydrateStringSafe(input, vp)
 
@@ -248,11 +410,11 @@ func HydrateString(input string, vp ValuedParameters) (string, error) {
 
 	missing := vp.MissingSubset(p)
 	if len(missing) > 0 {
-		missingNames := Map(slices.Values(missing), func(param Parameter) string {
+		missingNames := itertools.Map(slices.Values(missing), func(param Parameter) string {
 			return param.Name
 		})
 
-		return "", fmt.Errorf("%w: %v", ErrMissingParameters, missingNames)
+		return "", fmt.Errorf("%w: %v", ErrMissingParameters, slices.Collect(missingNames))
 	}
 
 	return out, nil
@@ -371,14 +533,4 @@ func cleanString(s string) string {
 	}
 
 	return strings.TrimSpace(parts[0]) + "|" + strings.TrimSpace(parts[1])
-}
-
-func Map[T, U any](seq iter.Seq[T], f func(T) U) iter.Seq[U] {
-	return func(yield func(U) bool) {
-		for v := range seq {
-			if !yield(f(v)) {
-				return
-			}
-		}
-	}
 }

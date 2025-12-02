@@ -3,6 +3,7 @@ package brackets
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
 )
 
@@ -10,6 +11,16 @@ const (
 	fortyCharVar    = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 	fortyOneCharVar = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 )
+
+func init() {
+	if len(fortyCharVar) != 40 {
+		panic("fortyCharVar is not 40 characters long")
+	}
+
+	if len(fortyOneCharVar) != 41 {
+		panic("fortyOneCharVar is not 41 characters long")
+	}
+}
 
 func Test_parseBrackets(t *testing.T) { //nolint:funlen
 	t.Parallel()
@@ -91,6 +102,53 @@ func Test_parseBrackets(t *testing.T) { //nolint:funlen
 				if got[i] != tc.want[i] {
 					t.Errorf("at index %d, expected %q, got %q", i, tc.want[i], got[i])
 				}
+			}
+		})
+	}
+}
+
+func TestParseCommand(t *testing.T) { //nolint:funlen
+	t.Parallel()
+
+	type testcase struct {
+		input string
+		want  string
+	}
+
+	inputs := map[string]testcase{
+		"extra-space-at-ends": {
+			input: "  Hello, {{name}}! Welcome to {{place}}.  ",
+			want:  "Hello, {{name}}! Welcome to {{place}}.",
+		},
+		"extra-space-center": {
+			input: "{{one}} some     text {{two}} more text {{three}}",
+			want:  "{{one}} some text {{two}} more text {{three}}",
+		},
+		"extra-spacing-in-brackets": {
+			input: "{{ one }} some text {{ two  }} more text {{three}}",
+			want:  "{{one}} some text {{two}} more text {{three}}",
+		},
+		"extra-spacing-with-desc-1": {
+			input: "{{ one | a normal description }} some text {{two}} more text {{three}}",
+			want:  "{{one|a normal description}} some text {{two}} more text {{three}}",
+		},
+		"extra-spacing-with-desc-2": {
+			input: "{{ one }} some text {{two | | description   }} more text {{three}}",
+			want:  "{{one}} some text {{two|| description}} more text {{three}}",
+		},
+	}
+
+	for name, tc := range inputs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := ParseCommand(tc.input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got != tc.want {
+				t.Errorf("expected %q, got %q", tc.want, got)
 			}
 		})
 	}
@@ -840,4 +898,823 @@ func TestRoundTrip(t *testing.T) {
 			t.Errorf("Round trip not deterministic:\n%s\n%s", data, data2)
 		}
 	})
+}
+
+func TestParameters_ToMap_Basic(t *testing.T) {
+	t.Parallel()
+
+	p := Parameters{
+		{Name: "param1", Description: "desc1"},
+		{Name: "param2", Description: "desc2"},
+	}
+
+	got := p.ToMap()
+	want := map[string]string{
+		"param1": "desc1",
+		"param2": "desc2",
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("ToMap() = %v, want %v", got, want)
+	}
+}
+
+func TestParameters_ToMap_Empty(t *testing.T) {
+	t.Parallel()
+
+	var p Parameters // nil slice
+
+	got := p.ToMap()
+	if len(got) != 0 {
+		t.Errorf("ToMap() expected empty map, got %v", got)
+	}
+
+	p = Parameters{} // empty but non-nil
+
+	got = p.ToMap()
+	if len(got) != 0 {
+		t.Errorf("ToMap() expected empty map, got %v", got)
+	}
+}
+
+func TestParameters_Names_Basic(t *testing.T) {
+	t.Parallel()
+
+	p := Parameters{
+		{Name: "z", Description: "last"},
+		{Name: "a", Description: "first"},
+	}
+
+	got := p.Names()
+	want := []string{"z", "a"} // preserves original order, not sorted
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Names() = %v, want %v", got, want)
+	}
+}
+
+func TestParameters_Names_Empty(t *testing.T) {
+	t.Parallel()
+
+	var p Parameters
+
+	got := p.Names()
+	want := []string{}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Names() = %v, want %v", got, want)
+	}
+}
+
+func TestParameters_Description_Found(t *testing.T) {
+	t.Parallel()
+
+	p := Parameters{
+		{Name: "a", Description: "first"},
+		{Name: "b", Description: "second"},
+	}
+
+	desc, err := p.Description("a")
+	if err != nil {
+		t.Fatalf("Description() returned unexpected error: %v", err)
+	}
+
+	if desc != "first" {
+		t.Errorf("Description() = %q, want %q", desc, "first")
+	}
+}
+
+func TestParameters_Description_NotFound(t *testing.T) {
+	t.Parallel()
+
+	p := Parameters{
+		{Name: "a", Description: "first"},
+	}
+
+	_, err := p.Description("missing")
+	if err == nil {
+		t.Fatal("Description() expected error, got nil")
+	}
+
+	if !errors.Is(err, ErrParameterNotFound) {
+		t.Fatalf("Description() error = %v, want ErrParameterNotFound", err)
+	}
+}
+
+func TestParameters_Replace(t *testing.T) { // nolint:funlen,gocognit,cyclop
+	t.Parallel()
+
+	t.Run("replace-existing-parameter", func(t *testing.T) {
+		t.Parallel()
+
+		params := Parameters{
+			{Name: "alpha", Description: "first"},
+			{Name: "beta", Description: "second"},
+			{Name: "gamma", Description: "third"},
+		}
+
+		params.Replace("beta", "updated second")
+
+		if len(params) != 3 {
+			t.Errorf("expected length 3, got %d", len(params))
+		}
+
+		desc, err := params.Description("beta")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "updated second" {
+			t.Errorf("expected 'updated second', got '%s'", desc)
+		}
+	})
+
+	t.Run("append-new-parameter", func(t *testing.T) {
+		t.Parallel()
+
+		params := Parameters{
+			{Name: "alpha", Description: "first"},
+			{Name: "gamma", Description: "third"},
+		}
+
+		params.Replace("beta", "new second")
+
+		if len(params) != 3 {
+			t.Errorf("expected length 3, got %d", len(params))
+		}
+
+		desc, err := params.Description("beta")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "new second" {
+			t.Errorf("expected 'new second', got '%s'", desc)
+		}
+	})
+
+	t.Run("maintains-sorted-order-after-replace", func(t *testing.T) {
+		t.Parallel()
+
+		params := Parameters{
+			{Name: "alpha", Description: "first"},
+			{Name: "beta", Description: "second"},
+		}
+
+		params.Replace("beta", "updated")
+
+		names := params.Names()
+		if len(names) != 2 || names[0] != "alpha" || names[1] != "beta" {
+			t.Errorf("expected sorted order [alpha, beta], got %v", names)
+		}
+	})
+
+	t.Run("maintains-sorted-order-after-append", func(t *testing.T) {
+		t.Parallel()
+
+		params := Parameters{
+			{Name: "alpha", Description: "first"},
+			{Name: "gamma", Description: "third"},
+		}
+
+		params.Replace("beta", "new second")
+
+		names := params.Names()
+		expected := []string{"alpha", "beta", "gamma"}
+
+		if len(names) != 3 {
+			t.Fatalf("expected length 3, got %d", len(names))
+		}
+
+		for i, name := range expected {
+			if names[i] != name {
+				t.Errorf("at index %d: expected '%s', got '%s'", i, name, names[i])
+			}
+		}
+	})
+
+	t.Run("replace-on-empty-slice", func(t *testing.T) {
+		t.Parallel()
+
+		params := Parameters{}
+
+		params.Replace("alpha", "first")
+
+		if len(params) != 1 {
+			t.Errorf("expected length 1, got %d", len(params))
+		}
+
+		desc, err := params.Description("alpha")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "first" {
+			t.Errorf("expected 'first', got '%s'", desc)
+		}
+	})
+
+	t.Run("replace on nil slice", func(t *testing.T) {
+		t.Parallel()
+
+		var params Parameters
+
+		params.Replace("alpha", "first")
+
+		if len(params) != 1 {
+			t.Errorf("expected length 1, got %d", len(params))
+		}
+
+		desc, err := params.Description("alpha")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "first" {
+			t.Errorf("expected 'first', got '%s'", desc)
+		}
+	})
+
+	t.Run("multiple-replaces-maintain-order", func(t *testing.T) {
+		t.Parallel()
+
+		params := Parameters{
+			{Name: "delta", Description: "fourth"},
+		}
+
+		params.Replace("alpha", "first")
+		params.Replace("gamma", "third")
+		params.Replace("beta", "second")
+		params.Replace("alpha", "updated first")
+
+		names := params.Names()
+		expected := []string{"alpha", "beta", "delta", "gamma"}
+
+		if len(names) != 4 {
+			t.Fatalf("expected length 4, got %d", len(names))
+		}
+
+		for i, name := range expected {
+			if names[i] != name {
+				t.Errorf("at index %d: expected '%s', got '%s'", i, name, names[i])
+			}
+		}
+
+		desc, _ := params.Description("alpha")
+		if desc != "updated first" {
+			t.Errorf("expected 'updated first', got '%s'", desc)
+		}
+	})
+
+	t.Run("replace with empty description", func(t *testing.T) {
+		t.Parallel()
+
+		params := Parameters{
+			{Name: "alpha", Description: "first"},
+		}
+
+		params.Replace("alpha", "")
+
+		desc, err := params.Description("alpha")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "" {
+			t.Errorf("expected empty string, got '%s'", desc)
+		}
+	})
+}
+
+func TestParameters_MergeName(t *testing.T) { // nolint:funlen,cyclop,gocognit,maintidx
+	t.Parallel()
+
+	t.Run("merge-existing-parameter-updates-description", func(t *testing.T) {
+		t.Parallel()
+
+		params := &Parameters{
+			{Name: "alpha", Description: "first"},
+			{Name: "beta", Description: "second"},
+		}
+		other := &Parameters{
+			{Name: "alpha", Description: "updated first"},
+			{Name: "gamma", Description: "third"},
+		}
+
+		params.MergeName(other, "alpha")
+
+		desc, err := params.Description("alpha")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "updated first" {
+			t.Errorf("expected 'updated first', got '%s'", desc)
+		}
+	})
+
+	t.Run("merge-non-existing-parameter-adds-it", func(t *testing.T) {
+		t.Parallel()
+
+		params := &Parameters{
+			{Name: "alpha", Description: "first"},
+		}
+		other := &Parameters{
+			{Name: "beta", Description: "second"},
+		}
+
+		params.MergeName(other, "beta")
+
+		if len(*params) != 2 {
+			t.Errorf("expected length 2, got %d", len(*params))
+		}
+
+		desc, err := params.Description("beta")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "second" {
+			t.Errorf("expected 'second', got '%s'", desc)
+		}
+	})
+
+	t.Run("merge-name-not-in-other-does-nothing", func(t *testing.T) {
+		t.Parallel()
+
+		params := &Parameters{
+			{Name: "alpha", Description: "first"},
+		}
+		other := &Parameters{
+			{Name: "beta", Description: "second"},
+		}
+
+		params.MergeName(other, "gamma")
+
+		if len(*params) != 1 {
+			t.Errorf("expected length 1, got %d", len(*params))
+		}
+
+		desc, err := params.Description("alpha")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "first" {
+			t.Errorf("expected 'first', got '%s'", desc)
+		}
+	})
+
+	t.Run("nil-receiver-does-nothing", func(t *testing.T) {
+		t.Parallel()
+
+		var params *Parameters
+
+		other := &Parameters{
+			{Name: "alpha", Description: "first"},
+		}
+
+		// Should not panic
+		params.MergeName(other, "alpha")
+
+		if params != nil {
+			t.Error("expected params to remain nil")
+		}
+	})
+
+	t.Run("nil-other-does-nothing", func(t *testing.T) {
+		t.Parallel()
+
+		params := &Parameters{
+			{Name: "alpha", Description: "first"},
+		}
+
+		var other *Parameters
+
+		params.MergeName(other, "alpha")
+
+		if len(*params) != 1 {
+			t.Errorf("expected length 1, got %d", len(*params))
+		}
+
+		desc, err := params.Description("alpha")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "first" {
+			t.Errorf("expected 'first', got '%s'", desc)
+		}
+	})
+
+	t.Run("merge-into-empty-parameters", func(t *testing.T) {
+		t.Parallel()
+
+		params := &Parameters{}
+		other := &Parameters{
+			{Name: "alpha", Description: "first"},
+		}
+
+		params.MergeName(other, "alpha")
+
+		if len(*params) != 1 {
+			t.Errorf("expected length 1, got %d", len(*params))
+		}
+
+		desc, err := params.Description("alpha")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "first" {
+			t.Errorf("expected 'first', got '%s'", desc)
+		}
+	})
+
+	t.Run("merge-from-empty-other-does-nothing", func(t *testing.T) {
+		t.Parallel()
+
+		params := &Parameters{
+			{Name: "alpha", Description: "first"},
+		}
+		other := &Parameters{}
+
+		params.MergeName(other, "alpha")
+
+		if len(*params) != 1 {
+			t.Errorf("expected length 1, got %d", len(*params))
+		}
+
+		desc, err := params.Description("alpha")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "first" {
+			t.Errorf("expected 'first', got '%s'", desc)
+		}
+	})
+
+	t.Run("maintains-sorted-order-after-merge", func(t *testing.T) {
+		t.Parallel()
+
+		params := &Parameters{
+			{Name: "alpha", Description: "first"},
+			{Name: "delta", Description: "fourth"},
+		}
+		other := &Parameters{
+			{Name: "beta", Description: "second"},
+		}
+
+		params.MergeName(other, "beta")
+
+		names := params.Names()
+		expected := []string{"alpha", "beta", "delta"}
+
+		if len(names) != 3 {
+			t.Fatalf("expected length 3, got %d", len(names))
+		}
+
+		for i, name := range expected {
+			if names[i] != name {
+				t.Errorf("at index %d: expected '%s', got '%s'", i, name, names[i])
+			}
+		}
+	})
+
+	t.Run("merge-with-empty-description", func(t *testing.T) {
+		t.Parallel()
+
+		params := &Parameters{
+			{Name: "alpha", Description: "first"},
+		}
+		other := &Parameters{
+			{Name: "alpha", Description: ""},
+		}
+
+		params.MergeName(other, "alpha")
+
+		desc, err := params.Description("alpha")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if desc != "" {
+			t.Errorf("expected empty string, got '%s'", desc)
+		}
+	})
+
+	t.Run("does-not-affect-other-parameters", func(t *testing.T) {
+		t.Parallel()
+
+		params := &Parameters{
+			{Name: "alpha", Description: "first"},
+			{Name: "beta", Description: "second"},
+			{Name: "gamma", Description: "third"},
+		}
+		other := &Parameters{
+			{Name: "beta", Description: "updated second"},
+		}
+
+		params.MergeName(other, "beta")
+
+		// Check that beta was updated
+		desc, _ := params.Description("beta")
+		if desc != "updated second" {
+			t.Errorf("expected 'updated second' for beta, got '%s'", desc)
+		}
+
+		// Check that alpha was not changed
+		desc, _ = params.Description("alpha")
+		if desc != "first" {
+			t.Errorf("expected 'first' for alpha, got '%s'", desc)
+		}
+
+		// Check that gamma was not changed
+		desc, _ = params.Description("gamma")
+		if desc != "third" {
+			t.Errorf("expected 'third' for gamma, got '%s'", desc)
+		}
+	})
+}
+
+func TestThreeWayMerge_NewParameterTakesPriority(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "priority desc"},
+	}
+	before := &Parameters{}
+	updated := &Parameters{
+		{Name: "alpha", Description: "short"},
+	}
+
+	priority.ThreeWayMerge(before, updated)
+
+	desc, _ := priority.Description("alpha")
+	if desc != "priority desc" {
+		t.Errorf("expected 'priority desc', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_NewParameterTakesUpdated(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "short"},
+	}
+	before := &Parameters{}
+	updated := &Parameters{
+		{Name: "alpha", Description: "updated longer desc"},
+	}
+
+	priority.ThreeWayMerge(before, updated)
+
+	desc, _ := priority.Description("alpha")
+	if desc != "updated longer desc" {
+		t.Errorf("expected 'updated longer desc', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_BothChangedTakesLonger(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "priority changed"},
+	}
+	before := &Parameters{
+		{Name: "alpha", Description: "original"},
+	}
+	updated := &Parameters{
+		{Name: "alpha", Description: "updated changed longer"},
+	}
+
+	priority.ThreeWayMerge(before, updated)
+
+	desc, _ := priority.Description("alpha")
+	if desc != "updated changed longer" {
+		t.Errorf("expected 'updated changed longer', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_BothChangedTakesPriority(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "priority changed longer"},
+	}
+	before := &Parameters{
+		{Name: "alpha", Description: "original"},
+	}
+	updated := &Parameters{
+		{Name: "alpha", Description: "updated short"},
+	}
+
+	priority.ThreeWayMerge(before, updated)
+
+	desc, _ := priority.Description("alpha")
+	if desc != "priority changed longer" {
+		t.Errorf("expected 'priority changed longer', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_OnlyPriorityChanged(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "priority changed"},
+	}
+	before := &Parameters{
+		{Name: "alpha", Description: "original"},
+	}
+	updated := &Parameters{
+		{Name: "alpha", Description: "original"},
+	}
+
+	priority.ThreeWayMerge(before, updated)
+
+	desc, _ := priority.Description("alpha")
+	if desc != "priority changed" {
+		t.Errorf("expected 'priority changed', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_OnlyUpdatedChanged(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "original"},
+	}
+	before := &Parameters{
+		{Name: "alpha", Description: "original"},
+	}
+	updated := &Parameters{
+		{Name: "alpha", Description: "updated changed"},
+	}
+
+	priority.ThreeWayMerge(before, updated)
+
+	desc, _ := priority.Description("alpha")
+	if desc != "updated changed" {
+		t.Errorf("expected 'updated changed', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_NothingChanged(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "same"},
+	}
+	before := &Parameters{
+		{Name: "alpha", Description: "same"},
+	}
+	updated := &Parameters{
+		{Name: "alpha", Description: "same"},
+	}
+
+	priority.ThreeWayMerge(before, updated)
+
+	desc, _ := priority.Description("alpha")
+	if desc != "same" {
+		t.Errorf("expected 'same', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_NilPriority(t *testing.T) {
+	t.Parallel()
+
+	var priority *Parameters
+	before := &Parameters{{Name: "alpha", Description: "before"}}
+	updated := &Parameters{{Name: "alpha", Description: "updated"}}
+
+	// Should not panic
+	priority.ThreeWayMerge(before, updated)
+
+	if priority != nil {
+		t.Error("expected priority to remain nil")
+	}
+}
+
+func TestThreeWayMerge_NilBefore(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "priority"},
+	}
+	var before *Parameters
+	updated := &Parameters{
+		{Name: "alpha", Description: "updated longer"},
+	}
+
+	priority.ThreeWayMerge(before, updated)
+
+	// Treats as new parameter since before is nil
+	desc, _ := priority.Description("alpha")
+	if desc != "updated longer" {
+		t.Errorf("expected 'updated longer', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_NilUpdated(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "priority changed"},
+	}
+	before := &Parameters{
+		{Name: "alpha", Description: "original"},
+	}
+	var updated *Parameters
+
+	priority.ThreeWayMerge(before, updated)
+
+	// Priority changed but updated doesn't exist, keep priority
+	desc, _ := priority.Description("alpha")
+	if desc != "priority changed" {
+		t.Errorf("expected 'priority changed', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_MultipleParameters(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "priority changed"},
+		{Name: "beta", Description: "same"},
+		{Name: "gamma", Description: "original"},
+		{Name: "delta", Description: "new"},
+	}
+	before := &Parameters{
+		{Name: "alpha", Description: "original"},
+		{Name: "beta", Description: "same"},
+		{Name: "gamma", Description: "original"},
+	}
+	updated := &Parameters{
+		{Name: "alpha", Description: "original"},
+		{Name: "beta", Description: "updated changed"},
+		{Name: "gamma", Description: "updated changed longer"},
+		{Name: "delta", Description: "new but longer description"},
+	}
+
+	priority.ThreeWayMerge(before, updated)
+
+	// alpha: priority changed, updated didn't -> keep priority
+	desc, _ := priority.Description("alpha")
+	if desc != "priority changed" {
+		t.Errorf("alpha: expected 'priority changed', got '%s'", desc)
+	}
+
+	// beta: priority didn't change, updated changed -> take updated
+	desc, _ = priority.Description("beta")
+	if desc != "updated changed" {
+		t.Errorf("beta: expected 'updated changed', got '%s'", desc)
+	}
+
+	// gamma: both changed, updated is longer -> take updated
+	desc, _ = priority.Description("gamma")
+	if desc != "updated changed longer" {
+		t.Errorf("gamma: expected 'updated changed longer', got '%s'", desc)
+	}
+
+	// delta: new parameter, updated is longer -> take updated
+	desc, _ = priority.Description("delta")
+	if desc != "new but longer description" {
+		t.Errorf("delta: expected 'new but longer description', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_UpdatedMissingParameter(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{
+		{Name: "alpha", Description: "changed"},
+	}
+	before := &Parameters{
+		{Name: "alpha", Description: "original"},
+	}
+	updated := &Parameters{}
+
+	priority.ThreeWayMerge(before, updated)
+
+	// Priority changed but updated doesn't have it -> keep priority
+	desc, _ := priority.Description("alpha")
+	if desc != "changed" {
+		t.Errorf("expected 'changed', got '%s'", desc)
+	}
+}
+
+func TestThreeWayMerge_EmptyPriority(t *testing.T) {
+	t.Parallel()
+
+	priority := &Parameters{}
+	before := &Parameters{{Name: "alpha", Description: "before"}}
+	updated := &Parameters{{Name: "alpha", Description: "updated"}}
+
+	priority.ThreeWayMerge(before, updated)
+
+	// Priority is empty, nothing to merge
+	if len(*priority) != 0 {
+		t.Errorf("expected empty priority, got %d items", len(*priority))
+	}
 }
