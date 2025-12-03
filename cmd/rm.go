@@ -25,7 +25,7 @@ Example:
   # Remove a command with verbose output
   shed rm old_command -v`,
 	Args: cobra.ExactArgs(1),
-	RunE: func(c *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		commandName := args[0]
 
 		logger.Debug("Removing command", "name", commandName)
@@ -33,6 +33,7 @@ Example:
 		s, err := store.NewStoreFromConfig()
 		if err != nil {
 			logger.Error("Failed to initialize store", "error", err)
+
 			return err
 		}
 
@@ -40,10 +41,12 @@ Example:
 		if err != nil {
 			if errors.Is(err, store.ErrCommandNotFound) {
 				logger.Error("Command not found", "name", commandName)
+
 				return err
 			}
 
 			logger.Error("Failed to remove command", "error", err)
+
 			return err
 		}
 

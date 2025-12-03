@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestValidateJSON(t *testing.T) {
+func TestValidateJSON(t *testing.T) { // nolint:funlen
 	t.Parallel()
 
 	tests := map[string]struct {
@@ -75,6 +75,7 @@ func TestValidateJSON(t *testing.T) {
 				if err == nil {
 					t.Errorf("validateJSON() expected error, got nil")
 				}
+
 				return
 			}
 

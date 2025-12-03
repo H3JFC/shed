@@ -1,6 +1,7 @@
 package itertools
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -98,11 +99,10 @@ func TestMap_StructTransformation(t *testing.T) {
 func TestMap_EarlyTermination(t *testing.T) {
 	t.Parallel()
 
-	input := slices.Values([]int{1, 2, 3, 4, 5})
-	doubled := Map(input, func(n int) int { return n * 2 })
+	input := []int{1, 2, 3, 4, 5}
+	doubled := Map(slices.Values(input), func(n int) int { return n * 2 })
 
-	// Collect only first 3 elements
-	var got []int
+	got := make([]int, 0, len(input))
 
 	for v := range doubled {
 		got = append(got, v)
@@ -142,15 +142,15 @@ func TestMap_ChainedMaps(t *testing.T) {
 func TestMap_PointerTransformation(t *testing.T) {
 	t.Parallel()
 
-	input := slices.Values([]int{1, 2, 3})
+	input := []int{1, 2, 3}
 
-	ptrs := Map(input, func(n int) *int {
+	ptrs := Map(slices.Values(input), func(n int) *int {
 		val := n * 2
 
 		return &val
 	})
 
-	var got []int
+	got := make([]int, 0, len(input))
 	for ptr := range ptrs {
 		got = append(got, *ptr)
 	}
@@ -210,13 +210,13 @@ func TestMap_BoolTransformation(t *testing.T) {
 func TestMap2_Success(t *testing.T) {
 	t.Parallel()
 
-	input := slices.Values([]int{1, 2, 3, 4, 5})
+	input := []int{1, 2, 3, 4, 5}
 
-	mapped := Map2(input, func(n int) (int, error) {
+	mapped := Map2(slices.Values(input), func(n int) (int, error) {
 		return n * 2, nil
 	})
 
-	var got []int
+	got := make([]int, 0, len(input))
 
 	for val, err := range mapped {
 		if err != nil {
@@ -235,17 +235,18 @@ func TestMap2_Success(t *testing.T) {
 func TestMap2_ErrorStopsIteration(t *testing.T) {
 	t.Parallel()
 
-	input := slices.Values([]int{1, 2, 3, 4, 5})
+	input := []int{1, 2, 3, 4, 5}
 
-	mapped := Map2(input, func(n int) (int, error) {
+	mapped := Map2(slices.Values(input), func(n int) (int, error) {
 		if n == 3 {
-			return 0, fmt.Errorf("error at %d", n)
+			return 0, fmt.Errorf("error at %d", n) // nolint:err113
 		}
 
 		return n * 2, nil
 	})
 
-	var got []int
+	got := make([]int, 0, len(input))
+
 	var gotErr error
 
 	for val, err := range mapped {
@@ -276,13 +277,14 @@ func TestMap2_ErrorStopsIteration(t *testing.T) {
 func TestMap2_ErrorOnFirstElement(t *testing.T) {
 	t.Parallel()
 
-	input := slices.Values([]int{1, 2, 3})
+	input := []int{1, 2, 3}
 
-	mapped := Map2(input, func(n int) (int, error) {
-		return 0, fmt.Errorf("always fails")
+	mapped := Map2(slices.Values(input), func(_ int) (int, error) {
+		return 0, errors.New("always fails") //nolint:err113
 	})
 
-	var got []int
+	got := make([]int, 0, len(input))
+
 	var gotErr error
 
 	for val, err := range mapped {
@@ -291,6 +293,7 @@ func TestMap2_ErrorOnFirstElement(t *testing.T) {
 
 			break
 		}
+
 		got = append(got, val)
 	}
 
@@ -306,13 +309,14 @@ func TestMap2_ErrorOnFirstElement(t *testing.T) {
 func TestMap2_EmptySequence(t *testing.T) {
 	t.Parallel()
 
-	input := slices.Values([]int{})
+	input := []int{}
 
-	mapped := Map2(input, func(n int) (int, error) {
+	mapped := Map2(slices.Values(input), func(n int) (int, error) {
 		return n * 2, nil
 	})
 
-	var got []int
+	got := make([]int, 0)
+
 	for val, err := range mapped {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -329,13 +333,12 @@ func TestMap2_EmptySequence(t *testing.T) {
 func TestMap2_StringConversionWithError(t *testing.T) {
 	t.Parallel()
 
-	input := slices.Values([]string{"123", "456", "abc", "789"})
+	input := []string{"123", "456", "abc", "789"}
 
-	mapped := Map2(input, func(s string) (int, error) {
-		return strconv.Atoi(s)
-	})
+	mapped := Map2(slices.Values(input), strconv.Atoi)
 
-	var got []int
+	got := make([]int, 0, len(input))
+
 	var gotErr error
 
 	for val, err := range mapped {
@@ -344,6 +347,7 @@ func TestMap2_StringConversionWithError(t *testing.T) {
 
 			break
 		}
+
 		got = append(got, val)
 	}
 
@@ -360,13 +364,13 @@ func TestMap2_StringConversionWithError(t *testing.T) {
 func TestMap2_EarlyTermination(t *testing.T) {
 	t.Parallel()
 
-	input := slices.Values([]int{1, 2, 3, 4, 5})
+	input := []int{1, 2, 3, 4, 5}
 
-	mapped := Map2(input, func(n int) (int, error) {
+	mapped := Map2(slices.Values(input), func(n int) (int, error) {
 		return n * 2, nil
 	})
 
-	var got []int
+	got := make([]int, 0, len(input))
 
 	for val, err := range mapped {
 		if err != nil {
@@ -388,13 +392,14 @@ func TestMap2_EarlyTermination(t *testing.T) {
 func TestMap2_IntToString(t *testing.T) {
 	t.Parallel()
 
-	input := slices.Values([]int{1, 2, 3})
+	input := []int{1, 2, 3}
 
-	mapped := Map2(input, func(n int) (string, error) {
+	mapped := Map2(slices.Values(input), func(n int) (string, error) {
 		return fmt.Sprintf("num-%d", n), nil
 	})
 
-	var got []string
+	got := make([]string, 0, len(input))
+
 	for val, err := range mapped {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -428,6 +433,7 @@ func TestMap2_LazyEvaluation(t *testing.T) {
 
 	// Consume only 2 elements
 	count := 0
+
 	for _, err := range mapped {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -452,33 +458,37 @@ func TestMap2_StructTransformationWithValidation(t *testing.T) {
 		Name string
 		Age  int
 	}
+
 	type PersonDTO struct {
 		FullName string
 		Years    int
 	}
 
-	input := slices.Values([]Person{
+	input := []Person{
 		{Name: "Alice", Age: 30},
 		{Name: "", Age: 25}, // Invalid - empty name
 		{Name: "Bob", Age: 35},
-	})
+	}
 
-	mapped := Map2(input, func(p Person) (PersonDTO, error) {
+	mapped := Map2(slices.Values(input), func(p Person) (PersonDTO, error) {
 		if p.Name == "" {
-			return PersonDTO{}, fmt.Errorf("name cannot be empty")
+			return PersonDTO{}, errors.New("name cannot be empty") //nolint:err113
 		}
 
 		return PersonDTO{FullName: p.Name, Years: p.Age}, nil
 	})
 
-	var got []PersonDTO
+	got := make([]PersonDTO, 0, len(input))
+
 	var gotErr error
 
 	for val, err := range mapped {
 		if err != nil {
 			gotErr = err
+
 			break
 		}
+
 		got = append(got, val)
 	}
 
@@ -500,16 +510,18 @@ func TestMap2_MultipleErrorsOnlyReturnsFirst(t *testing.T) {
 
 	mapped := Map2(input, func(n int) (int, error) {
 		if n%2 == 0 {
-			return 0, fmt.Errorf("error at %d", n)
+			return 0, fmt.Errorf("error at %d", n) // nolint:err113
 		}
 
 		return n * 2, nil
 	})
 
 	var gotErr error
+
 	for _, err := range mapped {
 		if err != nil {
 			gotErr = err
+
 			break
 		}
 	}

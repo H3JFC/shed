@@ -11,6 +11,11 @@ import (
 	"h3jfc/shed/internal/store"
 )
 
+const (
+	cpMinArgs = 2
+	cpMaxArgs = 3
+)
+
 // cpCmd represents the cp command.
 var cpCmd = &cobra.Command{
 	Use:   "cp <COMMAND_SRC_NAME> <COMMAND_DEST_NAME> [jsonValueParams]",
@@ -30,13 +35,13 @@ Example:
 
   # Copy with multiple parameter substitutions
   shed cp greet greet_john '{"name":"John","title":"Mr."}'`,
-	Args: cobra.RangeArgs(2, 3),
-	RunE: func(c *cobra.Command, args []string) error {
+	Args: cobra.RangeArgs(cpMinArgs, cpMaxArgs),
+	RunE: func(_ *cobra.Command, args []string) error {
 		srcName := args[0]
 		destName := args[1]
 
 		jsonValueParams := "{}"
-		if len(args) == 3 {
+		if len(args) == cpMaxArgs {
 			jsonValueParams = args[2]
 		}
 
@@ -49,12 +54,14 @@ Example:
 		// Validate JSON format
 		if err := validateJSON(jsonValueParams); err != nil {
 			logger.Error("Invalid JSON parameter format", "error", err)
+
 			return fmt.Errorf("invalid JSON format: %w", err)
 		}
 
 		s, err := store.NewStoreFromConfig()
 		if err != nil {
 			logger.Error("Failed to initialize store", "error", err)
+
 			return err
 		}
 
@@ -62,25 +69,30 @@ Example:
 		if err != nil {
 			if errors.Is(err, store.ErrCommandNotFound) {
 				logger.Error("Source command not found", "name", srcName)
+
 				return err
 			}
 
 			if errors.Is(err, store.ErrAlreadyExists) {
 				logger.Error("Destination command already exists", "name", destName)
+
 				return err
 			}
 
 			if errors.Is(err, store.ErrInvalidCommandName) {
 				logger.Error("Invalid destination command name", "name", destName, "error", err)
+
 				return err
 			}
 
 			if errors.Is(err, store.ErrParsingValueParams) {
 				logger.Error("Failed to parse parameter values", "error", err)
+
 				return err
 			}
 
 			logger.Error("Failed to copy command", "error", err)
+
 			return err
 		}
 

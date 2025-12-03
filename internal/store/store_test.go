@@ -31,7 +31,7 @@ func TestAddCommand_OK(t *testing.T) { // nolint:funlen
 		t.Fatalf("unexpected error adding command: %v", err)
 	}
 
-	if cmd.Name != "list_files" {
+	if cmd.Name != "list_files" { //nolint:goconst
 		t.Fatalf("expected command name %v, got %v", "list_files", cmd.Name)
 	}
 
@@ -48,11 +48,11 @@ func TestAddCommand_OK(t *testing.T) { // nolint:funlen
 	}
 
 	param := cmd.Parameters[0]
-	if param.Name != "path" {
+	if param.Name != "path" { //nolint:goconst
 		t.Fatalf("expected parameter name %v, got %v", "path", param.Name)
 	}
 
-	if param.Description != "description" {
+	if param.Description != "description" { //nolint:goconst
 		t.Fatalf("expected parameter description %v, got %v", "description", param.Description)
 	}
 
@@ -244,7 +244,7 @@ func TestCopyCommand_OK(t *testing.T) { // nolint:funlen
 		t.Fatalf("unexpected error copying command: %v", err)
 	}
 
-	if copiedCmd.Name != "list_files_home" {
+	if copiedCmd.Name != "list_files_home" { //nolint:goconst
 		t.Fatalf("expected command name %v, got %v", "list_files_home", copiedCmd.Name)
 	}
 
@@ -406,7 +406,14 @@ func TestUpdateCommand_OK(t *testing.T) { // nolint:funlen
 		{Name: "path", Description: "updated description"},
 	}
 
-	updatedCmd, err := s.UpdateCommand(cmd.ID, "list_files", "ls -la {{path|updated description}}", "updated list files command", params)
+	updatedCmd, err := s.UpdateCommand(
+		cmd.ID,
+		"list_files",
+		"ls -la {{path|updated description}}",
+		"updated list files command",
+		params,
+		"{}",
+	)
 	if err != nil {
 		t.Fatalf("unexpected error updating command: %v", err)
 	}
@@ -439,7 +446,14 @@ func TestUpdateCommand_ChangeName(t *testing.T) { // nolint:funlen
 	}
 
 	// Update command name
-	updatedCmd, err := s.UpdateCommand(cmd.ID, "show_files", "ls -la {{path|description}}", "show files command", cmd.Parameters)
+	updatedCmd, err := s.UpdateCommand(
+		cmd.ID,
+		"show_files",
+		"ls -la {{path|description}}",
+		"show files command",
+		cmd.Parameters,
+		"{}",
+	)
 	if err != nil {
 		t.Fatalf("unexpected error updating command: %v", err)
 	}
@@ -460,7 +474,14 @@ func TestUpdateCommand_OKMaxLength(t *testing.T) { // nolint:funlen
 	}
 
 	// Update command with max length name
-	updatedCmd, err := s.UpdateCommand(cmd.ID, validName32Char, "ls -la {{path|description}}", "command with max length name", cmd.Parameters)
+	updatedCmd, err := s.UpdateCommand(
+		cmd.ID,
+		validName32Char,
+		"ls -la {{path|description}}",
+		"command with max length name",
+		cmd.Parameters,
+		"{}",
+	)
 	if err != nil {
 		t.Fatalf("unexpected error updating command with max length name: %v", err)
 	}
@@ -486,7 +507,14 @@ func TestUpdateCommand_AddNewParameter(t *testing.T) { // nolint:funlen
 		{Name: "filter", Description: "file filter"},
 	}
 
-	updatedCmd, err := s.UpdateCommand(cmd.ID, "list_files", "ls -la {{path|description}} {{filter|file filter}}", "list files with filter", newParams)
+	updatedCmd, err := s.UpdateCommand(
+		cmd.ID,
+		"list_files",
+		"ls -la {{path|description}} {{filter|file filter}}",
+		"list files with filter",
+		newParams,
+		"{}",
+	)
 	if err != nil {
 		t.Fatalf("unexpected error updating command: %v", err)
 	}
@@ -509,7 +537,7 @@ func TestUpdateCommand_ErrCommandNotFound(t *testing.T) { // nolint:funlen
 	t.Parallel()
 	s := prepNewStore(t)
 
-	_, err := s.UpdateCommand(999, "list_files", "ls -la", "description", brackets.Parameters{})
+	_, err := s.UpdateCommand(999, "list_files", "ls -la", "description", brackets.Parameters{}, "{}")
 	if !errors.Is(err, ErrCommandNotFound) {
 		t.Fatalf("expected error %v, got %v", ErrCommandNotFound, err)
 	}
@@ -570,7 +598,7 @@ func TestUpdateCommand_ErrInvalidCommandName(t *testing.T) { // nolint:funlen
 			}
 
 			// Attempt update with invalid name
-			_, err = s.UpdateCommand(cmd.ID, tc.commandName, "ls -la", "description", brackets.Parameters{})
+			_, err = s.UpdateCommand(cmd.ID, tc.commandName, "ls -la", "description", brackets.Parameters{}, "{}")
 			if err == nil {
 				t.Fatalf("expected error %v, got nil", tc.want)
 			}
@@ -603,6 +631,7 @@ func TestUpdateCommand_ThreeWayMerge(t *testing.T) { // nolint:funlen
 		"echo {{param1|new command desc}}",
 		"updated test command",
 		updatedParams,
+		"{}",
 	)
 	if err != nil {
 		t.Fatalf("unexpected error updating command: %v", err)
@@ -614,11 +643,164 @@ func TestUpdateCommand_ThreeWayMerge(t *testing.T) { // nolint:funlen
 	}
 
 	if updatedCmd.Parameters[0].Description != "much longer updated description" {
-		t.Fatalf("expected parameter description %v, got %v", "much longer updated description", updatedCmd.Parameters[0].Description)
+		t.Fatalf("expected parameter description %v, got %v", "much longer updated description", updatedCmd.Parameters[0].Description) //nolint:lll
 	}
 }
 
-func TestGetCommand_OK(t *testing.T) { // nolint:funlen
+func TestUpdateCommand_WithHydration(t *testing.T) { // nolint:funlen
+	t.Parallel()
+	s := prepNewStore(t)
+
+	// Create initial command with parameters
+	cmd, err := s.AddCommand("api_call", "curl -XGET {{url|api url}} -H {{header|auth header}}", "make api call")
+	if err != nil {
+		t.Fatalf("unexpected error adding command: %v", err)
+	}
+
+	// Update command and hydrate the url parameter
+	params := brackets.Parameters{
+		{Name: "header", Description: "auth header"},
+	}
+
+	updatedCmd, err := s.UpdateCommand(
+		cmd.ID,
+		"api_call",
+		"curl -XGET {{url|api url}} -H {{header|auth header}}",
+		"make api call",
+		params,
+		`{"url":"https://api.example.com"}`,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error updating command: %v", err)
+	}
+
+	// The command should have the url hydrated
+	if updatedCmd.Command != "curl -XGET https://api.example.com -H {{header|auth header}}" {
+		t.Fatalf("expected command %q, got %q",
+			"curl -XGET https://api.example.com -H {{header|auth header}}",
+			updatedCmd.Command)
+	}
+
+	// Should only have one parameter left (header)
+	if len(updatedCmd.Parameters) != 1 {
+		t.Fatalf("expected 1 parameter, got %v", len(updatedCmd.Parameters))
+	}
+
+	if updatedCmd.Parameters[0].Name != "header" {
+		t.Fatalf("expected parameter name %q, got %q", "header", updatedCmd.Parameters[0].Name)
+	}
+}
+
+func TestUpdateCommand_WithHydrationMultiple(t *testing.T) { // nolint:funlen
+	t.Parallel()
+	s := prepNewStore(t)
+
+	// Create initial command
+	cmd, err := s.AddCommand(
+		"post_data",
+		"curl -XPOST --data '{{data}}' -H {{auth}} {{url}}",
+		"post data to api",
+	)
+	if err != nil {
+		t.Fatalf("unexpected error adding command: %v", err)
+	}
+
+	// Update and hydrate multiple parameters
+	updatedCmd, err := s.UpdateCommand(
+		cmd.ID,
+		"post_data",
+		"curl -XPOST --data '{{data}}' -H {{auth}} {{url}}",
+		"post data to api",
+		brackets.Parameters{},
+		`{"data":"{\"foo\":\"bar\"}","url":"https://api.example.com"}`,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error updating command: %v", err)
+	}
+
+	// The command should have data and url hydrated
+	expectedCmd := `curl -XPOST --data '{"foo":"bar"}' -H {{auth}} https://api.example.com`
+	if updatedCmd.Command != expectedCmd {
+		t.Fatalf("expected command %q, got %q", expectedCmd, updatedCmd.Command)
+	}
+
+	// Should only have auth parameter left
+	if len(updatedCmd.Parameters) != 1 {
+		t.Fatalf("expected 1 parameter, got %v", len(updatedCmd.Parameters))
+	}
+
+	if updatedCmd.Parameters[0].Name != "auth" {
+		t.Fatalf("expected parameter name %q, got %q", "auth", updatedCmd.Parameters[0].Name)
+	}
+}
+
+func TestUpdateCommand_WithEmptyString(t *testing.T) { // nolint:funlen
+	t.Parallel()
+	s := prepNewStore(t)
+
+	// Create initial command
+	cmd, err := s.AddCommand("test_cmd", "echo {{param|test parameter}}", "test command")
+	if err != nil {
+		t.Fatalf("unexpected error adding command: %v", err)
+	}
+
+	// Update with empty string should work the same as empty JSON object
+	updatedCmd, err := s.UpdateCommand(
+		cmd.ID,
+		"test_cmd",
+		"echo {{param|test parameter}}",
+		"test command updated",
+		brackets.Parameters{{Name: "param", Description: "test parameter"}},
+		"",
+	)
+	if err != nil {
+		t.Fatalf("unexpected error updating command with empty string: %v", err)
+	}
+
+	// Command should remain unchanged (no hydration)
+	if updatedCmd.Command != "echo {{param|test parameter}}" {
+		t.Fatalf("expected command %q, got %q", "echo {{param|test parameter}}", updatedCmd.Command)
+	}
+
+	// Should still have the parameter
+	if len(updatedCmd.Parameters) != 1 {
+		t.Fatalf("expected 1 parameter, got %v", len(updatedCmd.Parameters))
+	}
+
+	if updatedCmd.Parameters[0].Name != "param" {
+		t.Fatalf("expected parameter name %q, got %q", "param", updatedCmd.Parameters[0].Name)
+	}
+}
+
+func TestUpdateCommand_ErrInvalidJSON(t *testing.T) { // nolint:funlen
+	t.Parallel()
+	s := prepNewStore(t)
+
+	// Create initial command
+	cmd, err := s.AddCommand("test_cmd", "echo {{param}}", "test command")
+	if err != nil {
+		t.Fatalf("unexpected error adding command: %v", err)
+	}
+
+	// Attempt update with invalid JSON
+	_, err = s.UpdateCommand(
+		cmd.ID,
+		"test_cmd",
+		"echo {{param}}",
+		"test command",
+		brackets.Parameters{},
+		`{invalid json}`,
+	)
+	if err == nil {
+		t.Fatalf("expected error for invalid JSON, got nil")
+	}
+
+	if !errors.Is(err, brackets.ErrParsingValueParams) {
+		t.Fatalf("expected ErrParsingValueParams, got %v", err)
+	}
+}
+
+func TestGetCommand_OK(t *testing.T) { // nolint:funlen,cyclop
 	t.Parallel()
 	s := prepNewStore(t)
 
@@ -724,7 +906,7 @@ func TestGetCommandByName_ErrCommandNotFound(t *testing.T) { // nolint:funlen
 	}
 }
 
-func TestListCommands_OK(t *testing.T) { // nolint:funlen
+func TestListCommands_OK(t *testing.T) { // nolint:funlen,cyclop
 	t.Parallel()
 	s := prepNewStore(t)
 
@@ -769,9 +951,11 @@ func TestListCommands_OK(t *testing.T) { // nolint:funlen
 
 	// Verify grep_logs has correct parameters
 	var grepCmd *Command
+
 	for i := range commands {
 		if commands[i].Name == "grep_logs" {
 			grepCmd = &commands[i]
+
 			break
 		}
 	}

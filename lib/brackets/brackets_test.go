@@ -548,6 +548,190 @@ func TestHydrateString_Err(t *testing.T) {
 	}
 }
 
+func TestHydrateStringFromJSON_NoErr(t *testing.T) { //nolint:funlen
+	t.Parallel()
+
+	type testcase struct {
+		input           string
+		jsonValueParams string
+		want            string
+	}
+
+	tests := map[string]testcase{
+		"standard": {
+			input:           "Hello, {{name}}! Welcome to {{place}}.",
+			jsonValueParams: `{"name":"Alice","place":"Wonderland"}`,
+			want:            "Hello, Alice! Welcome to Wonderland.",
+		},
+		"with-description-pipes": {
+			input:           "Hello {{world|earth}}, {{universe|cosmos}} and {{universe2|reality}}!",
+			jsonValueParams: `{"world":"globe","universe":"multiverse","universe2":"dimension"}`,
+			want:            "Hello globe, multiverse and dimension!",
+		},
+		"single-parameter": {
+			input:           "curl -XGET {{url}}",
+			jsonValueParams: `{"url":"https://example.com"}`,
+			want:            "curl -XGET https://example.com",
+		},
+		"multiple-parameters": {
+			input: "curl -XPOST --data '{{data}}' -H {{header}} {{url}}",
+			jsonValueParams: `{"data":"{\"foo\":\"bar\"}","header":"Authorization:Bearer token",` +
+				`"url":"https://api.example.com"}`,
+			want: "curl -XPOST --data '{\"foo\":\"bar\"}' -H Authorization:Bearer token https://api.example.com",
+		},
+		"empty-json": {
+			input:           "No parameters here",
+			jsonValueParams: `{}`,
+			want:            "No parameters here",
+		},
+		"unused-parameters": {
+			input:           "Only {{used}} parameter",
+			jsonValueParams: `{"used":"this one","unused":"ignored"}`,
+			want:            "Only this one parameter",
+		},
+		"special-characters": {
+			input:           "Path: {{path}}",
+			jsonValueParams: `{"path":"/home/user/my documents/file.txt"}`,
+			want:            "Path: /home/user/my documents/file.txt",
+		},
+		"empty-value": {
+			input:           "Value: {{empty}}",
+			jsonValueParams: `{"empty":""}`,
+			want:            "Value: ",
+		},
+		"whitespace-in-json": {
+			input:           "{{first}} {{second}}",
+			jsonValueParams: `{ "first" : "one" , "second" : "two" }`,
+			want:            "one two",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := HydrateStringFromJSON(tc.input, tc.jsonValueParams)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got != tc.want {
+				t.Errorf("expected: %q, got: %q", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestHydrateStringFromJSON_WithEmptyString(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		input string
+		want  string
+	}{
+		"with-parameters": {
+			input: "curl -XGET {{url}} -H {{header}}",
+			want:  "curl -XGET {{url}} -H {{header}}",
+		},
+		"no-parameters": {
+			input: "echo hello world",
+			want:  "echo hello world",
+		},
+		"with-description-pipes": {
+			input: "{{name|user name}} says {{message|greeting message}}",
+			want:  "{{name|user name}} says {{message|greeting message}}",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// Empty string should work the same as "{}"
+			got, err := HydrateStringFromJSON(tc.input, "")
+			if err != nil {
+				t.Fatalf("unexpected error with empty string: %v", err)
+			}
+
+			if got != tc.want {
+				t.Errorf("expected: %q, got: %q", tc.want, got)
+			}
+
+			// Verify it's the same as using "{}"
+			gotWithEmptyJSON, err := HydrateStringFromJSON(tc.input, "{}")
+			if err != nil {
+				t.Fatalf("unexpected error with empty JSON: %v", err)
+			}
+
+			if got != gotWithEmptyJSON {
+				t.Errorf("empty string and empty JSON should produce same result: %q vs %q", got, gotWithEmptyJSON)
+			}
+		})
+	}
+}
+
+func TestHydrateStringFromJSON_Err(t *testing.T) { //nolint:funlen
+	t.Parallel()
+
+	type testcase struct {
+		input           string
+		jsonValueParams string
+		wantErr         error
+	}
+
+	tests := map[string]testcase{
+		"invalid-json-syntax": {
+			input:           "{{param}}",
+			jsonValueParams: `{invalid}`,
+			wantErr:         ErrParsingValueParams,
+		},
+		"invalid-json-missing-quotes": {
+			input:           "{{param}}",
+			jsonValueParams: `{param:value}`,
+			wantErr:         ErrParsingValueParams,
+		},
+		"invalid-json-trailing-comma": {
+			input:           "{{param}}",
+			jsonValueParams: `{"param":"value",}`,
+			wantErr:         ErrParsingValueParams,
+		},
+		"invalid-json-single-quotes": {
+			input:           "{{param}}",
+			jsonValueParams: `{'param':'value'}`,
+			wantErr:         ErrParsingValueParams,
+		},
+		"invalid-json-array": {
+			input:           "{{param}}",
+			jsonValueParams: `["param","value"]`,
+			wantErr:         ErrParsingValueParams,
+		},
+		"plain-text": {
+			input:           "{{param}}",
+			jsonValueParams: "not json",
+			wantErr:         ErrParsingValueParams,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := HydrateStringFromJSON(tc.input, tc.jsonValueParams)
+			if got != "" {
+				t.Fatalf("expected empty string, got: %q", got)
+			}
+
+			if err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("expected error: %v, got error: %v", tc.wantErr, err)
+			}
+		})
+	}
+}
+
 func TestParameters_MarshalJSON(t *testing.T) {
 	t.Parallel()
 
@@ -563,7 +747,7 @@ func TestParameters_MarshalJSON(t *testing.T) {
 				{Name: "apple", Description: "first"},
 				{Name: "monkey", Description: "middle"},
 			},
-			expected: `[{"name":"apple","description":"first"},{"name":"monkey","description":"middle"},{"name":"zebra","description":"last"}]`,
+			expected: `[{"name":"apple","description":"first"},{"name":"monkey","description":"middle"},{"name":"zebra","description":"last"}]`, //nolint:lll
 		},
 		{
 			name:     "empty slice",
@@ -979,7 +1163,7 @@ func TestParameters_Description_Found(t *testing.T) {
 		t.Fatalf("Description() returned unexpected error: %v", err)
 	}
 
-	if desc != "first" {
+	if desc != "first" { // nolint:goconst
 		t.Errorf("Description() = %q, want %q", desc, "first")
 	}
 }
@@ -1534,7 +1718,7 @@ func TestThreeWayMerge_OnlyPriorityChanged(t *testing.T) {
 	priority.ThreeWayMerge(before, updated)
 
 	desc, _ := priority.Description("alpha")
-	if desc != "priority changed" {
+	if desc != "priority changed" { //nolint:goconst
 		t.Errorf("expected 'priority changed', got '%s'", desc)
 	}
 }
@@ -1585,6 +1769,7 @@ func TestThreeWayMerge_NilPriority(t *testing.T) {
 	t.Parallel()
 
 	var priority *Parameters
+
 	before := &Parameters{{Name: "alpha", Description: "before"}}
 	updated := &Parameters{{Name: "alpha", Description: "updated"}}
 
@@ -1602,7 +1787,9 @@ func TestThreeWayMerge_NilBefore(t *testing.T) {
 	priority := &Parameters{
 		{Name: "alpha", Description: "priority"},
 	}
+
 	var before *Parameters
+
 	updated := &Parameters{
 		{Name: "alpha", Description: "updated longer"},
 	}
@@ -1625,6 +1812,7 @@ func TestThreeWayMerge_NilUpdated(t *testing.T) {
 	before := &Parameters{
 		{Name: "alpha", Description: "original"},
 	}
+
 	var updated *Parameters
 
 	priority.ThreeWayMerge(before, updated)

@@ -19,6 +19,7 @@ var (
 	ErrParameterContainsSpaces        = errors.New("parameter contains spaces")
 	ErrContainsInvalidSymbols         = errors.New("parameter contains invalid symbols")
 	ErrParameterNotFound              = errors.New("parameter not found")
+	ErrParsingValueParams             = errors.New("failed to parse value parameters")
 )
 
 var spaceRegex = regexp.MustCompile(`\s+`)
@@ -50,7 +51,7 @@ type ValuedParameter struct {
 
 type (
 	Parameters       []Parameter
-	ValuedParameters []ValuedParameter
+	ValuedParameters []ValuedParameter // nolint:recvcheck
 )
 
 // MarshalJSON ensures deterministic ordering by name.
@@ -69,7 +70,7 @@ func (p Parameters) MarshalJSON() ([]byte, error) {
 	})
 
 	// Marshal the sorted slice.
-	return json.Marshal([]Parameter(sorted))
+	return json.Marshal(sorted)
 }
 
 // UnmarshalJSON ensures the slice is sorted after unmarshaling.
@@ -350,9 +351,10 @@ func ParseParameters(input string) (Parameters, error) {
 // - Trimming leading/trailing whitespace
 // - Normalizing spacing inside {{...}} blocks
 // - Normalizing spacing around | separators in parameter descriptions
-// - Collapsing multiple spaces outside {{...}} blocks to single spaces
+// - Collapsing multiple spaces outside {{...}} blocks to single spaces.
 func ParseCommand(input string) (string, error) {
 	s := strings.TrimSpace(input)
+
 	var result strings.Builder
 	result.Grow(len(s))
 
@@ -370,6 +372,7 @@ func ParseCommand(input string) (string, error) {
 			}
 
 			result.WriteString("{{")
+
 			i += 2
 			start := i
 
@@ -380,9 +383,12 @@ func ParseCommand(input string) (string, error) {
 					normalized := cleanString(content)
 					result.WriteString(normalized)
 					result.WriteString("}}")
+
 					i += 2
+
 					break
 				}
+
 				i++
 			}
 		} else {
@@ -428,10 +434,12 @@ func HydrateStringSafe(s string, vp ValuedParameters) string {
 	i := 0
 
 	j := 0
+
 	var outSb268 strings.Builder
+
 	for j < len(s)-1 {
 		// Look for opening {{
-		if s[j] == '{' && s[j+1] == '{' {
+		if s[j] == '{' && s[j+1] == '{' { //nolint:nestif
 			outSb268.WriteString(s[i:j] + "%s")
 			j += 2
 			start := j
@@ -464,6 +472,7 @@ func HydrateStringSafe(s string, vp ValuedParameters) string {
 			j++
 		}
 	}
+
 	out += outSb268.String()
 
 	if i < len(s) {
@@ -473,7 +482,20 @@ func HydrateStringSafe(s string, vp ValuedParameters) string {
 	return fmt.Sprintf(out, args...)
 }
 
-func parseBrackets(s string) []string {
+func HydrateStringFromJSON(cmd, jsonValueParams string) (string, error) {
+	if jsonValueParams == "" {
+		jsonValueParams = "{}"
+	}
+
+	vp, err := ValuedParametersFromJSON(jsonValueParams)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrParsingValueParams, err)
+	}
+
+	return HydrateStringSafe(cmd, vp), nil
+}
+
+func parseBrackets(s string) []string { //nolint:gocognit
 	var results []string
 
 	seen := make(map[string]int) // maps key to index in results
@@ -481,7 +503,7 @@ func parseBrackets(s string) []string {
 	i := 0
 	for i < len(s)-1 {
 		// Look for opening {{
-		if s[i] == '{' && s[i+1] == '{' {
+		if s[i] == '{' && s[i+1] == '{' { //nolint:nestif
 			i += 2
 			start := i
 

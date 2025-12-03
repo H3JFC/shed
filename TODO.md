@@ -18,16 +18,16 @@
 - [x] "shed rm command <NAME>"
 - [x] "shed list"
 - [x] "shed describe <COMMAND_NAME>"
-- [] "shed edit <COMMAND_NAME> --description|-d <COMMAND_DESCRIPTION> --name|-n <NEW_COMMAND_NAME> <CLI_COMMAND> {jsonValueParams}" # requires implementing a separate store hydrate string method
+- [x] "shed edit <COMMAND_NAME> --description|-d <COMMAND_DESCRIPTION> --name|-n <NEW_COMMAND_NAME> <CLI_COMMAND> {jsonValueParams}"
 
 ### Review
 
-- [] shed add
-- [] shed cp
-- [] shed rm
-- [] shed list
-- [] shed edit
-- [] shed describe
+- [x] shed add
+- [x] shed cp
+- [x] shed rm
+- [x] shed list
+- [x] shed edit
+- [x] shed describe
 
 ## Examples
 

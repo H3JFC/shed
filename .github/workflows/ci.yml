@@ -70,6 +70,7 @@ jobs:
       - name: Run tests with coverage
         shell: bash
         env:
+          CGO_ENABLED: 1
           BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
           CGO_CFLAGS: ${{ matrix.os == 'windows-latest' && '-IC:/msys64/mingw64/include' || '' }}
           CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}
@@ -133,6 +134,7 @@ jobs:
       - name: Build binary
         shell: bash
         env:
+          CGO_ENABLED: 1
           BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
           CGO_CFLAGS: ${{ matrix.os == 'windows-latest' && '-IC:/msys64/mingw64/include' || '' }}
           CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}

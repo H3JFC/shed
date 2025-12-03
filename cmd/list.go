@@ -25,23 +25,26 @@ Example:
   # List all commands with verbose output
   shed list -v`,
 	Args: cobra.NoArgs,
-	RunE: func(c *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		logger.Debug("Listing commands")
 
 		s, err := store.NewStoreFromConfig()
 		if err != nil {
 			logger.Error("Failed to initialize store", "error", err)
+
 			return err
 		}
 
 		commands, err := s.ListCommands()
 		if err != nil {
 			logger.Error("Failed to list commands", "error", err)
+
 			return err
 		}
 
 		if len(commands) == 0 {
 			logger.Info("No commands found")
+
 			return nil
 		}
 

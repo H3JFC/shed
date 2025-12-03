@@ -95,21 +95,15 @@ func (s *Store) AddCommand(name, command, description string) (*Command, error) 
 }
 
 func (s *Store) CopyCommand(srcName, destName, jsonValueParams string) (*Command, error) {
-	if jsonValueParams == "" {
-		jsonValueParams = "{}"
-	}
-
-	vp, err := brackets.ValuedParametersFromJSON(jsonValueParams)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrParsingValueParams, err)
-	}
-
 	c, err := s.GetCommandByName(srcName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get source command: %w", err)
 	}
 
-	cmdStr := brackets.HydrateStringSafe(c.Command, vp)
+	cmdStr, err := brackets.HydrateStringFromJSON(c.Command, jsonValueParams)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrParsingValueParams, err)
+	}
 
 	cmd, err := s.AddCommand(destName, cmdStr, c.Description)
 	if err != nil {
@@ -131,7 +125,12 @@ func (s *Store) RemoveCommand(name string) error {
 	return nil
 }
 
-func (s *Store) UpdateCommand(id int64, name, command, description string, params brackets.Parameters) (*Command, error) {
+func (s *Store) UpdateCommand(
+	id int64,
+	name, command, description string,
+	params brackets.Parameters,
+	jsonValueParams string,
+) (*Command, error) {
 	if err := validateName(name); err != nil {
 		return nil, err
 	}
@@ -139,6 +138,11 @@ func (s *Store) UpdateCommand(id int64, name, command, description string, param
 	c, err := brackets.ParseCommand(command)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse command: %w", err)
+	}
+
+	c, err = brackets.HydrateStringFromJSON(c, jsonValueParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hydrate command from json: %w", err)
 	}
 
 	prev, err := s.GetCommand(id)
@@ -193,35 +197,52 @@ func (s *Store) ListCommands() ([]Command, error) {
 // - Start with a letter (a-z, A-Z)
 // - Contain only alphanumeric characters and underscores
 // - Not be empty
-// - Not exceed the maximum length
+// - Not exceed the maximum length.
 func validateName(name string) error {
-	if len(name) == 0 {
+	if err := validateNameLength(name); err != nil {
+		return err
+	}
+
+	if err := validateNameFirstChar(name); err != nil {
+		return err
+	}
+
+	return validateNameChars(name)
+}
+
+func validateNameLength(name string) error {
+	if len(name) == 0 || len(name) > nameMaxLength {
 		return fmt.Errorf("%w: %s", ErrInvalidCommandName, nameLength)
 	}
 
-	if len(name) > nameMaxLength {
-		return fmt.Errorf("%w: %s", ErrInvalidCommandName, nameLength)
-	}
+	return nil
+}
 
-	// Check first character is a letter
+func validateNameFirstChar(name string) error {
 	first := name[0]
-	if !((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z')) {
+	if (first < 'a' || first > 'z') && (first < 'A' || first > 'Z') {
 		return fmt.Errorf("%w: %s", ErrInvalidCommandName, nameDetails)
 	}
 
-	// Check remaining characters are alphanumeric or underscore
-	for i := 1; i < len(name); i++ {
-		c := name[i]
-		isLetter := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
-		isDigit := c >= '0' && c <= '9'
-		isUnderscore := c == '_'
+	return nil
+}
 
-		if !isLetter && !isDigit && !isUnderscore {
+func validateNameChars(name string) error {
+	for i := 1; i < len(name); i++ {
+		if !isValidNameChar(name[i]) {
 			return fmt.Errorf("%w: %s", ErrInvalidCommandName, nameDetails)
 		}
 	}
 
 	return nil
+}
+
+func isValidNameChar(c byte) bool {
+	isLetter := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+	isDigit := c >= '0' && c <= '9'
+	isUnderscore := c == '_'
+
+	return isLetter || isDigit || isUnderscore
 }
 
 func ToParameters(raw json.RawMessage) (brackets.Parameters, error) {
@@ -260,7 +281,8 @@ func ToCommands(cc []db.Command) ([]Command, error) {
 		return *cmd, nil
 	})
 
-	var out []Command
+	out := make([]Command, 0, len(cc))
+
 	for c, err := range mapped {
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert commands: %w", err)
@@ -293,7 +315,11 @@ func (s *Store) createCommand(name, command, description string, params brackets
 	return ToCommand(c)
 }
 
-func (s *Store) updateCommand(id int64, name, command, description string, params brackets.Parameters) (*Command, error) {
+func (s *Store) updateCommand(
+	id int64,
+	name, command, description string,
+	params brackets.Parameters,
+) (*Command, error) {
 	bb, err := json.Marshal(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal parameters to json: %w", err)
@@ -313,12 +339,4 @@ func (s *Store) updateCommand(id int64, name, command, description string, param
 	}
 
 	return ToCommand(c)
-}
-
-func checkNameLength(name string) error {
-	if len(name) > nameMaxLength {
-		return ErrNameTooLong
-	}
-
-	return nil
 }

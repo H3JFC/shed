@@ -9,9 +9,9 @@ import (
 	"h3jfc/shed/internal/store"
 )
 
-var (
-	addDescription string
-)
+var addDescription string
+
+const addRequiredArgs = 2
 
 // addCmd represents the add command.
 var addCmd = &cobra.Command{
@@ -24,8 +24,8 @@ The command string can contain parameters using the {{name|description}} syntax.
 Example:
   shed add list_files "ls -la {{path|directory path}}" --description "List files in a directory"
   shed add greet "echo Hello {{name|person's name}}" -d "Greet someone by name"`,
-	Args: cobra.ExactArgs(2),
-	RunE: func(c *cobra.Command, args []string) error {
+	Args: cobra.ExactArgs(addRequiredArgs),
+	RunE: func(_ *cobra.Command, args []string) error {
 		commandName := args[0]
 		commandCommand := args[1]
 
@@ -34,6 +34,7 @@ Example:
 		s, err := store.NewStoreFromConfig()
 		if err != nil {
 			logger.Error("Failed to initialize store", "error", err)
+
 			return err
 		}
 
@@ -41,15 +42,18 @@ Example:
 		if err != nil {
 			if errors.Is(err, store.ErrAlreadyExists) {
 				logger.Error("Command already exists", "name", commandName)
+
 				return err
 			}
 
 			if errors.Is(err, store.ErrInvalidCommandName) {
 				logger.Error("Invalid command name", "name", commandName, "error", err)
+
 				return err
 			}
 
 			logger.Error("Failed to add command", "error", err)
+
 			return err
 		}
 
