@@ -103,13 +103,17 @@ func createConfigFile(dirPath, password string) error {
 	configPath := filepath.Join(dirPath, defaultConfigName)
 	dbPath := filepath.Join(dirPath, defaultDBName)
 
+	// Use forward slashes for cross-platform compatibility in TOML
+	// (backslashes are escape characters in TOML double-quoted strings)
+	dbPathNormalized := filepath.ToSlash(dbPath)
+
 	configContent := fmt.Sprintf(`[shed-db]
 password = "%s"
 location = "%s"
 
 [settings]
 # Add other configuration settings here
-`, password, dbPath)
+`, password, dbPathNormalized)
 
 	if err := os.WriteFile(configPath, []byte(configContent), defaultFilePerms); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)

@@ -19,13 +19,13 @@ jobs:
       - name: Install SQLCipher dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsqlcipher-dev
+          sudo apt-get install -y build-essential libsqlcipher-dev
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
-          args: --config .golangci.yaml --build-tags=sqlcipher
+          version: v2.7.1
+          args: --config .golangci.yaml --build-tags=sqlcipher,linux
 
   test-coverage:
     name: Test Coverage
@@ -54,18 +54,26 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsqlcipher-dev
+          sudo apt-get install -y build-essential libsqlcipher-dev
 
       - name: Install SQLCipher (macOS)
         if: matrix.os == 'macos-latest'
-        run: brew install sqlcipher
+        run: |
+          # Ensure Xcode Command Line Tools are installed
+          xcode-select --install 2>/dev/null || true
+          brew install sqlcipher
 
       - name: Install SQLCipher (Windows)
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
           # Install MSYS2 packages
-          C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-sqlcipher
+          C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-sqlcipher
+
+      - name: Setup Windows PATH
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
 
       - name: Run tests with coverage
         shell: bash
@@ -74,7 +82,6 @@ jobs:
           BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
           CGO_CFLAGS: ${{ matrix.os == 'windows-latest' && '-IC:/msys64/mingw64/include' || '' }}
           CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}
-          PATH: ${{ matrix.os == 'windows-latest' && 'C:/msys64/mingw64/bin;C:/msys64/usr/bin' || '' }}:$PATH
         run: |
           go test -tags="${BUILD_TAGS}" -coverprofile=coverage.out -covermode=atomic ./...
           go tool cover -html=coverage.out -o coverage.html
@@ -108,28 +115,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
       - name: Install SQLCipher (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsqlcipher-dev
+          sudo apt-get install -y build-essential libsqlcipher-dev
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Install SQLCipher (macOS)
         if: matrix.os == 'macos-latest'
-        run: brew install sqlcipher
+        run: |
+          # Ensure Xcode Command Line Tools are installed
+          xcode-select --install 2>/dev/null || true
+          brew install sqlcipher
 
       - name: Install SQLCipher (Windows)
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
           # Install MSYS2 packages
-          C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-sqlcipher
+          C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-sqlcipher
+
+      - name: Setup Windows PATH
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
 
       - name: Build binary
         shell: bash
@@ -138,7 +153,6 @@ jobs:
           BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
           CGO_CFLAGS: ${{ matrix.os == 'windows-latest' && '-IC:/msys64/mingw64/include' || '' }}
           CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}
-          PATH: ${{ matrix.os == 'windows-latest' && 'C:/msys64/mingw64/bin;C:/msys64/usr/bin' || '' }}:$PATH
         run: go build -tags="${BUILD_TAGS}" -o ${{ matrix.binary-name }} main.go
 
       - name: Upload binary artifact

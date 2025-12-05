@@ -58,7 +58,7 @@ install: deps
 
 lint: deps
 	@echo "Formatting and linting code with golangci-lint..."
-	golangci-lint run --config .golangci.yaml
+	golangci-lint run --config .golangci.yaml --build-tags=sqlcipher,$(OS_TAG)
 	wait
 	@echo "✅ Code formatting and linting completed"
 
