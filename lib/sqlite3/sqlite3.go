@@ -17,19 +17,44 @@ import (
 const (
 	defaultTargetVersion  = 1
 	defaultCipherPageSize = 4096
+	conn                  = "file:%s?_key=%s&_cipher_page_size=%d&cache=shared&_journal_mode=WAL&_busy_timeout=10000"
 )
 
 var ErrDirtyMigration = errors.New("migration is dirty, intervention is needed")
 
-func Migrate(dbPath, encryptionKey string) error {
-	dbname := fmt.Sprintf("file:%s?_key=%s&_cipher_page_size=%d", dbPath, encryptionKey, defaultCipherPageSize)
+func DB(dbPath, encryptionKey string) (*sql.DB, error) {
+	dbname := fmt.Sprintf(conn, dbPath, encryptionKey, defaultCipherPageSize)
+
+	db, err := sql.Open("sqlite3", dbname)
+	if err != nil {
+		return nil, err
+	}
+
+	db.SetMaxOpenConns(1)
+
+	return db, nil
+}
+
+func MigrateShedDB(dbPath, encryptionKey string) error {
+	dbname := fmt.Sprintf(conn, dbPath, encryptionKey, defaultCipherPageSize)
 
 	db, err := sql.Open("sqlite3", dbname)
 	if err != nil {
 		return err
 	}
+
+	db.SetMaxOpenConns(1)
 	defer closeDatabase(db)
 
+	m, err := createMigrator(db)
+	if err != nil {
+		return err
+	}
+
+	return runMigrations(m)
+}
+
+func MigrateDB(db *sql.DB) error {
 	m, err := createMigrator(db)
 	if err != nil {
 		return err

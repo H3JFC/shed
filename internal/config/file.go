@@ -49,7 +49,7 @@ func CreateShedDirectory(path string) error {
 
 	// Create empty database file (will be initialized later with encryption)
 	dbPath := filepath.Join(path, defaultDBName)
-	if err := sqlite3.Migrate(dbPath, password); err != nil {
+	if err := sqlite3.MigrateShedDB(dbPath, password); err != nil {
 		return fmt.Errorf("failed to create database file: %w", err)
 	}
 
@@ -101,13 +101,19 @@ func readPassword() (string, error) {
 // createConfigFile creates a config.toml file with the database password.
 func createConfigFile(dirPath, password string) error {
 	configPath := filepath.Join(dirPath, defaultConfigName)
+	dbPath := filepath.Join(dirPath, defaultDBName)
+
+	// Use forward slashes for cross-platform compatibility in TOML
+	// (backslashes are escape characters in TOML double-quoted strings)
+	dbPathNormalized := filepath.ToSlash(dbPath)
 
 	configContent := fmt.Sprintf(`[shed-db]
 password = "%s"
+location = "%s"
 
 [settings]
 # Add other configuration settings here
-`, password)
+`, password, dbPathNormalized)
 
 	if err := os.WriteFile(configPath, []byte(configContent), defaultFilePerms); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)

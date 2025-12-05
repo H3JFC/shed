@@ -57,8 +57,8 @@ install: deps
 	@echo "✅ Installed $(BINARY_NAME) to system PATH"
 
 lint: deps
-	@echo "Formatting and linting code with golangci-lint (parallel)..."
-	golangci-lint run --config .golangci.yaml --allow-parallel-runners &
+	@echo "Formatting and linting code with golangci-lint..."
+	golangci-lint run --config .golangci.yaml --build-tags=sqlcipher,$(OS_TAG)
 	wait
 	@echo "✅ Code formatting and linting completed"
 
@@ -67,6 +67,12 @@ lint-fix: deps
 	golangci-lint run --fix --config .golangci.yaml --allow-parallel-runners &
 	wait
 	@echo "✅ Code formatting and linting completed with auto-fix"
+
+lint-parallel: deps
+	@echo "Formatting and linting code with golangci-lint (parallel)..."
+	golangci-lint run --config .golangci.yaml --allow-parallel-runners &
+	wait
+	@echo "✅ Code formatting and linting completed"
 
 lint-new: deps
 	@echo "Linting only new/changed code with golangci-lint..."

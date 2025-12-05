@@ -1,6 +1,6 @@
 -- name: CreateCommand :one
-INSERT INTO commands (name, command)
-VALUES (?, ?)
+INSERT INTO commands (name, command, description, parameters)
+VALUES (?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetCommandByID :one
@@ -21,13 +21,13 @@ ORDER BY created_at DESC;
 
 -- name: UpdateCommand :one
 UPDATE commands
-SET name = ?, command = ?
+SET name = ?, command = ?, parameters = ?, description = ?
 WHERE id = ?
 RETURNING *;
 
 -- name: UpdateCommandByName :one
 UPDATE commands
-SET command = ?
+SET name = ?, command = ?, parameters = ?, description = ?
 WHERE name = ?
 RETURNING *;
 
@@ -38,7 +38,3 @@ WHERE id = ?;
 -- name: DeleteCommandByName :exec
 DELETE FROM commands
 WHERE name = ?;
-
--- name: DeleteCommandByCommand :exec
-DELETE FROM commands
-WHERE command = ?;

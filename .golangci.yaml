@@ -177,6 +177,11 @@ linters:
       - linters:
           - gomoddirectives
         text: "replacement are not allowed"
+      # Allow lib/os package name (shadowing standard library)
+      - path: lib/os/
+        linters:
+          - revive
+        text: "var-naming: avoid package names that conflict"
 issues:
   # Maximum issues count per one linter.
   # Set to 0 to disable.
@@ -259,6 +264,9 @@ formatters:
     paths:
       - ".*\\.my\\.go$"
       - lib/bad.go
+      - db/models.go
+      - db/db.go
+      - db/.*\\.sql\\.go$
 # Options for analysis running.
 run:
   # Timeout for total work, e.g. 30s, 5m, 5m30s.

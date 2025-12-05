@@ -2,6 +2,8 @@ CREATE TABLE IF NOT EXISTS commands (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     command TEXT NOT NULL,
+    description TEXT NOT NULL,
+    parameters JSONB NOT NULL DEFAULT (jsonb_array()),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

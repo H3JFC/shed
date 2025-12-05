@@ -4,12 +4,18 @@
 
 package db
 
+import (
+	"encoding/json"
+)
+
 type Command struct {
-	ID        int64
-	Name      string
-	Command   string
-	CreatedAt string
-	UpdatedAt string
+	ID          int64
+	Name        string
+	Command     string
+	Description string
+	Parameters  json.RawMessage
+	CreatedAt   string
+	UpdatedAt   string
 }
 
 type Secret struct {
