@@ -1,4 +1,4 @@
-package cmd
+package command
 
 import (
 	"errors"
@@ -12,8 +12,8 @@ import (
 
 var ErrShedAlreadyInitialized = errors.New("shed already initialized")
 
-// initCmd represents the add command.
-var initCmd = &cobra.Command{
+// InitCmd represents the add command.
+var InitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Init command that displays the current configuration",
 	Long:  `init`,
@@ -46,8 +46,4 @@ var initCmd = &cobra.Command{
 
 		return nil
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(initCmd)
 }

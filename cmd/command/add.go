@@ -1,4 +1,4 @@
-package cmd
+package command
 
 import (
 	"errors"
@@ -13,8 +13,8 @@ var addDescription string
 
 const addRequiredArgs = 2
 
-// addCmd represents the add command.
-var addCmd = &cobra.Command{
+// AddCmd represents the add command.
+var AddCmd = &cobra.Command{
 	Use:   "add <COMMAND_NAME> <COMMAND_COMMAND>",
 	Short: "Add a new command to shed",
 	Long: `Add a new command to shed with a name, description, and command string.
@@ -70,7 +70,5 @@ Example:
 }
 
 func init() {
-	rootCmd.AddCommand(addCmd)
-
-	addCmd.Flags().StringVarP(&addDescription, "description", "d", "", "Description of the command")
+	AddCmd.Flags().StringVarP(&addDescription, "description", "d", "", "Description of the command")
 }

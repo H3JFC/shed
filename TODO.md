@@ -26,7 +26,7 @@
 ## Secrets
 
 - [x] Interpolate {{!secret|description}} as a valid secret Parameters
-  - Brackets.ParseSecret
+  - [x] Brackets.ParseSecret
 - [ ] "shed add secret --description|-d <KEY> <VALUE>"
   - [x] store.AddSecret
 - [ ] "shed list secrets"

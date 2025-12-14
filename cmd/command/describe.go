@@ -1,4 +1,4 @@
-package cmd
+package command
 
 import (
 	"errors"
@@ -11,8 +11,8 @@ import (
 	"h3jfc/shed/internal/store"
 )
 
-// describeCmd represents the describe command.
-var describeCmd = &cobra.Command{
+// DescribeCmd represents the describe command.
+var DescribeCmd = &cobra.Command{
 	Use:   "describe <COMMAND_NAME>",
 	Short: "Display detailed information about a command",
 	Long: `Display detailed information about a specific command including its name,
@@ -76,8 +76,4 @@ Example:
 
 		return nil
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(describeCmd)
 }

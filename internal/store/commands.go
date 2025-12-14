@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	"h3jfc/shed/db"
+	"h3jfc/shed/internal/logger"
 	"h3jfc/shed/lib/brackets"
 	"h3jfc/shed/lib/itertools"
 	"h3jfc/shed/lib/sqlite3"
@@ -37,8 +38,18 @@ type Store struct {
 }
 
 func NewStoreFromConfig() (*Store, error) {
+	logger.Debug("initializing store from config")
+
 	dbPath := viper.GetString("shed-db.location")
 	encryptionKey := viper.GetString("shed-db.password")
+
+	if dbPath == "" {
+		return nil, fmt.Errorf("database path is not set: %w", ErrNotFound)
+	}
+
+	if encryptionKey == "" {
+		return nil, fmt.Errorf("database encryption key is not set: %w", ErrNotFound)
+	}
 
 	dbtx, err := sqlite3.DB(dbPath, encryptionKey)
 	if err != nil {

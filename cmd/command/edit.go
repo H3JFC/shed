@@ -1,4 +1,4 @@
-package cmd
+package command
 
 import (
 	"errors"
@@ -19,8 +19,8 @@ const (
 	editMaxArgs = 3
 )
 
-// editCmd represents the edit command.
-var editCmd = &cobra.Command{
+// EditCmd represents the edit command.
+var EditCmd = &cobra.Command{
 	Use:   "edit <COMMAND_NAME> [flags] <CLI_COMMAND> [jsonValueParams]",
 	Short: "Edit an existing command in shed",
 	Long: `Edit an existing command in shed by updating its name, description, command string, or parameters.
@@ -134,8 +134,6 @@ Examples:
 }
 
 func init() {
-	rootCmd.AddCommand(editCmd)
-
-	editCmd.Flags().StringVarP(&editDescription, "description", "d", "", "New description for the command")
-	editCmd.Flags().StringVarP(&editName, "name", "n", "", "New name for the command")
+	EditCmd.Flags().StringVarP(&editDescription, "description", "d", "", "New description for the command")
+	EditCmd.Flags().StringVarP(&editName, "name", "n", "", "New name for the command")
 }

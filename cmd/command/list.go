@@ -1,4 +1,4 @@
-package cmd
+package command
 
 import (
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	"h3jfc/shed/internal/store"
 )
 
-// listCmd represents the list command.
-var listCmd = &cobra.Command{
+// ListCmd represents the list command.
+var ListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all commands in shed",
 	Long: `List all stored commands in shed.
@@ -77,8 +77,4 @@ Example:
 
 		return nil
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(listCmd)
 }
