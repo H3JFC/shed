@@ -13,13 +13,14 @@ import (
 )
 
 var (
-	ErrMissingParameters              = errors.New("missing parameters")
-	ErrParameterTooLong               = errors.New("parameter too long")
-	ErrParameterStartsWithInvalidChar = errors.New("parameter starts with invalid character")
-	ErrParameterContainsSpaces        = errors.New("parameter contains spaces")
-	ErrContainsInvalidSymbols         = errors.New("parameter contains invalid symbols")
-	ErrParameterNotFound              = errors.New("parameter not found")
-	ErrParsingValueParams             = errors.New("failed to parse value parameters")
+	ErrMissingParameters      = errors.New("missing parameters")
+	ErrNameEmpty              = errors.New("name cannot be empty")
+	ErrTooLong                = errors.New("too long")
+	ErrStartsWithInvalidChar  = errors.New("starts with invalid character")
+	ErrContainsSpaces         = errors.New("contains spaces")
+	ErrContainsInvalidSymbols = errors.New("contains invalid symbols")
+	ErrParameterNotFound      = errors.New("parameter not found")
+	ErrParsingValueParams     = errors.New("failed to parse value parameters")
 )
 
 var spaceRegex = regexp.MustCompile(`\s+`)
@@ -28,6 +29,7 @@ const (
 	maxParts       = 2
 	characterLimit = 40
 	symbols        = "!@#$%^&*()-+=[]{};:'\",.<>?/\\|`~"
+	bang           = '!'
 )
 
 var symbolSet map[rune]struct{}
@@ -49,10 +51,22 @@ type ValuedParameter struct {
 	Value string `json:"value,omitempty"`
 }
 
+type Secret struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
 type (
 	Parameters       []Parameter
 	ValuedParameters []ValuedParameter // nolint:recvcheck
+	Secrets          []Secret
 )
+
+type Brackets struct {
+	Command    string
+	Parameters *Parameters
+	Secrets    *Secrets
+}
 
 // MarshalJSON ensures deterministic ordering by name.
 func (p Parameters) MarshalJSON() ([]byte, error) {
@@ -305,46 +319,49 @@ func ParametersFromJSON(jsonStr string) (Parameters, error) {
 }
 
 func ParseParameters(input string) (Parameters, error) {
-	ss := parseBrackets(input)
+	predicate := func(p Parameter) bool {
+		return rune(p.Name[0]) != bang // filter out secrets
+	}
 
-	params := itertools.Map(slices.Values(ss), func(s string) Parameter {
-		parts := strings.SplitN(s, "|", maxParts)
+	pp := parseParamOrSecret(input, predicate)
 
-		if len(parts) == 1 {
-			return Parameter{Name: parts[0], Description: ""}
-		}
+	var err error
 
-		return Parameter{Name: parts[0], Description: parts[1]}
-	})
-
-	pp := Parameters(slices.Collect(params))
-
-	for i := range pp {
-		if len(pp[i].Name) == 0 {
-			panic("parameter name cannot be empty")
-		}
-
-		firstChar := rune(pp[i].Name[0])
-		if firstChar >= '0' && firstChar <= '9' {
-			return nil, fmt.Errorf("%w: %s", ErrParameterStartsWithInvalidChar, pp[i].Name)
-		}
-
-		for _, r := range pp[i].Name {
-			if _, exists := symbolSet[r]; exists {
-				return nil, fmt.Errorf("%w: %s", ErrContainsInvalidSymbols, pp[i].Name)
-			}
-		}
-
-		if len(pp[i].Name) > characterLimit {
-			return nil, fmt.Errorf("%w: %s", ErrParameterTooLong, pp[i].Name)
-		}
-
-		if strings.Contains(pp[i].Name, " ") {
-			return nil, fmt.Errorf("%w: %s", ErrParameterContainsSpaces, pp[i].Name)
-		}
+	pp, err = checkForInvalidParameters(pp, true)
+	if err != nil {
+		return nil, err
 	}
 
 	return pp, nil
+}
+
+func ParseSecrets(input string) (Secrets, error) {
+	predicate := func(p Parameter) bool {
+		return rune(p.Name[0]) == bang // filter out non-secrets
+	}
+
+	pp := parseParamOrSecret(input, predicate)
+
+	pp = slices.Collect(itertools.Map(slices.Values(pp), func(p Parameter) Parameter {
+		// Remove leading '!' from secret names
+		return Parameter{
+			Name:        p.Name[1:],
+			Description: p.Description,
+		}
+	}))
+
+	var err error
+
+	pp, err = checkForInvalidParameters(pp, false)
+	if err != nil {
+		return nil, err
+	}
+
+	ss := itertools.Map(slices.Values(pp), func(p Parameter) Secret {
+		return Secret(p)
+	})
+
+	return slices.Collect(ss), nil
 }
 
 // ParseCommand normalizes a command string by:
@@ -404,6 +421,29 @@ func ParseCommand(input string) (string, error) {
 	}
 
 	return result.String(), nil
+}
+
+func Parse(input string) (*Brackets, error) {
+	cmd, err := ParseCommand(input)
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := ParseParameters(input)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := ParseSecrets(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Brackets{
+		Command:    cmd,
+		Parameters: &p,
+		Secrets:    &s,
+	}, err
 }
 
 func HydrateString(input string, vp ValuedParameters) (string, error) {
@@ -539,6 +579,58 @@ func parseBrackets(s string) []string { //nolint:gocognit
 	}
 
 	return results
+}
+
+func parseParamOrSecret(input string, predicate func(Parameter) bool) Parameters {
+	ss := parseBrackets(input)
+
+	params := itertools.Map(slices.Values(ss), func(s string) Parameter {
+		parts := strings.SplitN(s, "|", maxParts)
+
+		if len(parts) == 1 {
+			return Parameter{Name: parts[0], Description: ""}
+		}
+
+		return Parameter{Name: parts[0], Description: parts[1]}
+	})
+
+	pp := Parameters(slices.Collect(params))
+
+	return itertools.Filter(pp, predicate)
+}
+
+func checkForInvalidParameters(pp Parameters, parameter bool) (Parameters, error) {
+	errString := "parameter"
+	if !parameter {
+		errString = "secret"
+	}
+
+	for i := range pp {
+		if len(pp[i].Name) == 0 {
+			return nil, fmt.Errorf("%s %w", errString, ErrNameEmpty)
+		}
+
+		firstChar := rune(pp[i].Name[0])
+		if firstChar >= '0' && firstChar <= '9' {
+			return nil, fmt.Errorf("%s %w: %s", errString, ErrStartsWithInvalidChar, pp[i].Name)
+		}
+
+		for _, r := range pp[i].Name {
+			if _, exists := symbolSet[r]; exists {
+				return nil, fmt.Errorf("%s %w: %s", errString, ErrContainsInvalidSymbols, pp[i].Name)
+			}
+		}
+
+		if len(pp[i].Name) > characterLimit {
+			return nil, fmt.Errorf("%s %w: %s", errString, ErrTooLong, pp[i].Name)
+		}
+
+		if strings.Contains(pp[i].Name, " ") {
+			return nil, fmt.Errorf("%s %w: %s", errString, ErrContainsSpaces, pp[i].Name)
+		}
+	}
+
+	return pp, nil
 }
 
 func parseName(s string) string {

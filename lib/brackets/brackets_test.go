@@ -199,6 +199,10 @@ func TestParseParameters_OK(t *testing.T) { //nolint:funlen
 			input: "{{first}}{{second}}{{third}}",
 			want:  []Parameter{{"first", ""}, {"second", ""}, {"third", ""}},
 		},
+		"ignores-secrets": {
+			input: "{{first}}{{second}}{{third}}{{! secret}}",
+			want:  []Parameter{{"first", ""}, {"second", ""}, {"third", ""}},
+		},
 		"no-blocks": {
 			input: "No blocks here",
 			want:  []Parameter{},
@@ -263,11 +267,11 @@ func TestParseParameters_Err(t *testing.T) { //nolint:funlen
 	inputs := map[string]testcase{
 		"exceeds-limit": {
 			input: "Hello, {{" + fortyOneCharVar + "}}! Welcome to {{place}}.",
-			want:  ErrParameterTooLong,
+			want:  ErrTooLong,
 		},
 		"space-in-param": {
 			input: "Hello, {{foo bar}}! Welcome to {{place}}.",
-			want:  ErrParameterContainsSpaces,
+			want:  ErrContainsSpaces,
 		},
 	}
 
@@ -302,12 +306,12 @@ func TestParseParameters_ErrSymbol(t *testing.T) { //nolint:funlen
 	inputs := map[string]testcase{}
 
 	nums := "0123456789"
-	syms := "!@#$%^&*()-+=[]{};:'\",.<>?/\\`~"
+	syms := "@#$%^&*()-+=[]{};:'\",.<>?/\\`~"
 
 	for _, ch := range nums {
 		inputs["starts-invalid-char-"+string(ch)] = testcase{
 			input: "Hello, {{ " + string(ch) + "valid_suffix }}! Welcome to {{place}}.",
-			want:  ErrParameterStartsWithInvalidChar,
+			want:  ErrStartsWithInvalidChar,
 		}
 	}
 
@@ -1904,5 +1908,474 @@ func TestThreeWayMerge_EmptyPriority(t *testing.T) {
 	// Priority is empty, nothing to merge
 	if len(*priority) != 0 {
 		t.Errorf("expected empty priority, got %d items", len(*priority))
+	}
+}
+
+func TestParseSecrets_OK(t *testing.T) { //nolint:funlen
+	t.Parallel()
+
+	type testcase struct {
+		input string
+		want  []Secret
+	}
+
+	inputs := map[string]testcase{
+		"standard-1": {
+			input: "Hello, {{!password}}! Welcome to {{!apikey}}.",
+			want:  []Secret{{"password", ""}, {"apikey", ""}},
+		},
+		"standard-2": {
+			input: "{{!one}} some text {{!two}} more text {{!three}}",
+			want:  []Secret{{"one", ""}, {"two", ""}, {"three", ""}},
+		},
+		"character-limit-with-spaces": {
+			input: "{{ !" + fortyCharVar + " }} some text {{!two}} more text {{!three}}",
+			want:  []Secret{{fortyCharVar, ""}, {"two", ""}, {"three", ""}},
+		},
+		"extra-spacing": {
+			input: "{{ !one }} some text {{!two}} more text {{!three}}",
+			want:  []Secret{{"one", ""}, {"two", ""}, {"three", ""}},
+		},
+		"extra-spacing-with-desc": {
+			input: "{{ !one }} some text {{!two | | description   }} more text {{!three}}",
+			want:  []Secret{{"one", ""}, {"two", "| description"}, {"three", ""}},
+		},
+		"duplicates-1": {
+			input: "{{!one}} some text {{!two}} more than {{!one}} text {{!three}}{{!two}}",
+			want:  []Secret{{"one", ""}, {"two", ""}, {"three", ""}},
+		},
+		"duplicates-2-fuller-description": {
+			input: "{{!one|foobar}} some text {{!two|base}} more than {{!one|foobarbaz}} text {{!three|}}{{!two}}",
+			want:  []Secret{{"one", "foobarbaz"}, {"two", "base"}, {"three", ""}},
+		},
+		"with-pipes": {
+			input: "Hello {{!world|earth}} and {{!universe|}}, {{!universe2||}}!",
+			want:  []Secret{{"world", "earth"}, {"universe", ""}, {"universe2", "|"}},
+		},
+		"just-brackets": {
+			input: "{{!first}}{{!second}}{{!third}}",
+			want:  []Secret{{"first", ""}, {"second", ""}, {"third", ""}},
+		},
+		"mixed-with-parameters": {
+			input: "{{first}}{{!second}}{{third}}{{!fourth}}",
+			want:  []Secret{{"second", ""}, {"fourth", ""}},
+		},
+		"no-secrets": {
+			input: "{{first}}{{second}}{{third}}",
+			want:  []Secret{},
+		},
+		"no-blocks": {
+			input: "No blocks here",
+			want:  []Secret{},
+		},
+		"single-secret": {
+			input: "{{!single_secret}}",
+			want:  []Secret{{"single_secret", ""}},
+		},
+		"in-middle": {
+			input: "Start {{!middle}} end",
+			want:  []Secret{{"middle", ""}},
+		},
+		"empty": {
+			input: "{{}}",
+			want:  []Secret{},
+		},
+		"empty-with-desc": {
+			input: "{{|foo}}",
+			want:  []Secret{},
+		},
+		"empty-with-empty-desc": {
+			input: "{{|}}",
+			want:  []Secret{},
+		},
+	}
+
+	for name, tc := range inputs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := ParseSecrets(tc.input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(got) != len(tc.want) {
+				t.Fatalf("expected %d results, got %d; obj: %v", len(tc.want), len(got), got)
+			}
+
+			for i := range got {
+				if got[i].Name != tc.want[i].Name {
+					t.Errorf("at index %d, expected name: %q got name: %q", i, tc.want[i].Name, got[i].Name)
+				}
+
+				if got[i].Description != tc.want[i].Description {
+					t.Errorf("at index %d, expected description: %q got description: %q", i,
+						tc.want[i].Description, got[i].Description)
+				}
+			}
+		})
+	}
+}
+
+func TestParseSecrets_Err(t *testing.T) { //nolint:funlen
+	t.Parallel()
+
+	type testcase struct {
+		input string
+		want  error
+	}
+
+	inputs := map[string]testcase{
+		"exceeds-limit": {
+			input: "Hello, {{!" + fortyOneCharVar + "}}! Welcome to {{!place}}.",
+			want:  ErrTooLong,
+		},
+		"space-in-secret": {
+			input: "Hello, {{!foo bar}}! Welcome to {{!place}}.",
+			want:  ErrContainsSpaces,
+		},
+		"double-bang": {
+			input: "{{!!secret}}",
+			want:  ErrContainsInvalidSymbols,
+		},
+		"double-bang-with-desc": {
+			input: "{{!!password|my secret password}}",
+			want:  ErrContainsInvalidSymbols,
+		},
+		"triple-bang": {
+			input: "{{!!!extreme}}",
+			want:  ErrContainsInvalidSymbols,
+		},
+		"bang-in-middle": {
+			input: "{{!my!secret}}",
+			want:  ErrContainsInvalidSymbols,
+		},
+	}
+
+	for name, tc := range inputs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := ParseSecrets(tc.input)
+			if err == nil {
+				t.Fatalf("expected an error, got nil")
+			}
+
+			if len(got) != 0 {
+				t.Fatalf("expected empty result, got: %v", got)
+			}
+
+			if !errors.Is(err, tc.want) {
+				t.Errorf("expected error: %v, got error: %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestParseSecrets_ErrSymbol(t *testing.T) { //nolint:funlen
+	t.Parallel()
+
+	type testcase struct {
+		input string
+		want  error
+	}
+
+	inputs := map[string]testcase{}
+
+	nums := "0123456789"
+	syms := "@#$%^&*()-+=[]{};:'\",.<>?/\\`~"
+
+	for _, ch := range nums {
+		inputs["starts-invalid-char-"+string(ch)] = testcase{
+			input: "Hello, {{ !" + string(ch) + "valid_suffix }}! Welcome to {{!place}}.",
+			want:  ErrStartsWithInvalidChar,
+		}
+	}
+
+	for _, ch := range syms {
+		inputs["contains-invalid-char-"+string(ch)] = testcase{
+			input: "Hello, {{ !" + "valid_" + string(ch) + "valid_suffix }}! Welcome to {{!place}}.",
+			want:  ErrContainsInvalidSymbols,
+		}
+	}
+
+	for name, tc := range inputs {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := ParseSecrets(tc.input)
+			if len(got) != 0 {
+				t.Fatalf("expected empty result, got: %v", got)
+			}
+
+			if err == nil {
+				t.Fatalf("expected an error, got nil")
+			}
+
+			if !errors.Is(err, tc.want) {
+				t.Errorf("expected error: %v, got error: %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestParseSecrets_IgnoresParameters(t *testing.T) {
+	t.Parallel()
+
+	type testcase struct {
+		input       string
+		wantSecrets Secrets
+	}
+
+	tests := map[string]testcase{
+		"mixed-params-and-secrets": {
+			input:       "curl {{url}} -H {{!token}}",
+			wantSecrets: Secrets{{"token", ""}},
+		},
+		"only-parameters": {
+			input:       "echo {{name}} {{message}}",
+			wantSecrets: Secrets{},
+		},
+		"secrets-with-desc-and-params": {
+			input:       "{{name}} uses {{!password|secret key}} to login at {{url}}",
+			wantSecrets: Secrets{{"password", "secret key"}},
+		},
+		"multiple-secrets": {
+			input:       "{{!apikey|API key}} and {{!token|auth token}} for {{endpoint}}",
+			wantSecrets: Secrets{{"apikey", "API key"}, {"token", "auth token"}},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := ParseSecrets(tc.input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(got) != len(tc.wantSecrets) {
+				t.Fatalf("Secrets length: expected %d, got %d; secrets: %v",
+					len(tc.wantSecrets), len(got), got)
+			}
+
+			for i := range got {
+				if got[i].Name != tc.wantSecrets[i].Name {
+					t.Errorf("Secrets[%d].Name: expected %q, got %q",
+						i, tc.wantSecrets[i].Name, got[i].Name)
+				}
+
+				if got[i].Description != tc.wantSecrets[i].Description {
+					t.Errorf("Secrets[%d].Description: expected %q, got %q",
+						i, tc.wantSecrets[i].Description, got[i].Description)
+				}
+			}
+		})
+	}
+}
+
+func TestParse_IgnoresSecrets(t *testing.T) {
+	t.Parallel()
+
+	type testcase struct {
+		input       string
+		wantCommand string
+		wantParams  Parameters
+	}
+
+	tests := map[string]testcase{
+		"mixed-params-and-secrets": {
+			input:       "curl {{url}} -H {{!token}}",
+			wantCommand: "curl {{url}} -H {{!token}}",
+			wantParams:  Parameters{{"url", ""}},
+		},
+		"only-secrets": {
+			input:       "echo {{!password}} {{!apikey}}",
+			wantCommand: "echo {{!password}} {{!apikey}}",
+			wantParams:  Parameters{},
+		},
+		"params-with-desc-and-secrets": {
+			input:       "{{name|user name}} says {{message}} to {{!admin}}",
+			wantCommand: "{{name|user name}} says {{message}} to {{!admin}}",
+			wantParams:  Parameters{{"name", "user name"}, {"message", ""}},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := Parse(tc.input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got.Command != tc.wantCommand {
+				t.Errorf("Command: expected %q, got %q", tc.wantCommand, got.Command)
+			}
+
+			if len(*got.Parameters) != len(tc.wantParams) {
+				t.Fatalf("Parameters length: expected %d, got %d; params: %v",
+					len(tc.wantParams), len(*got.Parameters), *got.Parameters)
+			}
+
+			for i := range *got.Parameters {
+				if (*got.Parameters)[i].Name != tc.wantParams[i].Name {
+					t.Errorf("Parameters[%d].Name: expected %q, got %q",
+						i, tc.wantParams[i].Name, (*got.Parameters)[i].Name)
+				}
+
+				if (*got.Parameters)[i].Description != tc.wantParams[i].Description {
+					t.Errorf("Parameters[%d].Description: expected %q, got %q",
+						i, tc.wantParams[i].Description, (*got.Parameters)[i].Description)
+				}
+			}
+		})
+	}
+}
+
+func TestParse(t *testing.T) { //nolint:funlen,gocognit,cyclop
+	t.Parallel()
+
+	type testcase struct {
+		input       string
+		wantCommand string
+		wantParams  Parameters
+		wantErr     error
+	}
+
+	tests := map[string]testcase{
+		"standard": {
+			input:       "Hello, {{name}}! Welcome to {{place}}.",
+			wantCommand: "Hello, {{name}}! Welcome to {{place}}.",
+			wantParams:  Parameters{{"name", ""}, {"place", ""}},
+		},
+		"with-descriptions": {
+			input:       "curl -XGET {{url|API endpoint}} -H {{header|auth header}}",
+			wantCommand: "curl -XGET {{url|API endpoint}} -H {{header|auth header}}",
+			wantParams:  Parameters{{"url", "API endpoint"}, {"header", "auth header"}},
+		},
+		"extra-spacing": {
+			input:       "  {{  one  }}  some     text  {{two}} more text {{three}}  ",
+			wantCommand: "{{one}} some text {{two}} more text {{three}}",
+			wantParams:  Parameters{{"one", ""}, {"two", ""}, {"three", ""}},
+		},
+		"extra-spacing-with-desc": {
+			input:       "{{ one | desc1 }} text {{two | | description   }} more {{three}}",
+			wantCommand: "{{one|desc1}} text {{two|| description}} more {{three}}",
+			wantParams:  Parameters{{"one", "desc1"}, {"two", "| description"}, {"three", ""}},
+		},
+		"duplicates-longer-description": {
+			input:       "{{one|short}} text {{one|longer description}} end",
+			wantCommand: "{{one|short}} text {{one|longer description}} end",
+			wantParams:  Parameters{{"one", "longer description"}},
+		},
+		"no-parameters": {
+			input:       "Just plain text",
+			wantCommand: "Just plain text",
+			wantParams:  Parameters{},
+		},
+		"single-parameter": {
+			input:       "{{single}}",
+			wantCommand: "{{single}}",
+			wantParams:  Parameters{{"single", ""}},
+		},
+		"empty-brackets": {
+			input:       "{{}}",
+			wantCommand: "{{}}",
+			wantParams:  Parameters{},
+		},
+		"at-character-limit": {
+			input:       "{{" + fortyCharVar + "}}",
+			wantCommand: "{{" + fortyCharVar + "}}",
+			wantParams:  Parameters{{fortyCharVar, ""}},
+		},
+		"multiple-with-pipes": {
+			input:       "{{first|desc1}} {{second||}} {{third|||}}",
+			wantCommand: "{{first|desc1}} {{second||}} {{third|||}}",
+			wantParams:  Parameters{{"first", "desc1"}, {"second", "|"}, {"third", "||"}},
+		},
+		"exceeds-character-limit": {
+			input:   "{{" + fortyOneCharVar + "}}",
+			wantErr: ErrTooLong,
+		},
+		"parameter-with-space": {
+			input:   "{{foo bar}}",
+			wantErr: ErrContainsSpaces,
+		},
+		"parameter-starts-with-digit": {
+			input:   "{{0invalid}}",
+			wantErr: ErrStartsWithInvalidChar,
+		},
+		"parameter-contains-at-symbol": {
+			input:   "{{invalid@name}}",
+			wantErr: ErrContainsInvalidSymbols,
+		},
+		"parameter-contains-hash": {
+			input:   "{{invalid#name}}",
+			wantErr: ErrContainsInvalidSymbols,
+		},
+		"parameter-contains-dollar": {
+			input:   "{{invalid$name}}",
+			wantErr: ErrContainsInvalidSymbols,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := Parse(tc.input)
+
+			if tc.wantErr != nil {
+				if err == nil {
+					t.Fatalf("expected error %v, got nil", tc.wantErr)
+				}
+
+				if !errors.Is(err, tc.wantErr) {
+					t.Errorf("expected error %v, got %v", tc.wantErr, err)
+				}
+
+				if got != nil {
+					t.Errorf("expected nil result on error, got %+v", got)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got == nil {
+				t.Fatal("expected non-nil result, got nil")
+			}
+
+			if got.Command != tc.wantCommand {
+				t.Errorf("Command: expected %q, got %q", tc.wantCommand, got.Command)
+			}
+
+			if got.Parameters == nil {
+				t.Fatal("expected non-nil Parameters, got nil")
+			}
+
+			if len(*got.Parameters) != len(tc.wantParams) {
+				t.Fatalf("Parameters length: expected %d, got %d; params: %v",
+					len(tc.wantParams), len(*got.Parameters), *got.Parameters)
+			}
+
+			for i := range *got.Parameters {
+				if (*got.Parameters)[i].Name != tc.wantParams[i].Name {
+					t.Errorf("Parameters[%d].Name: expected %q, got %q",
+						i, tc.wantParams[i].Name, (*got.Parameters)[i].Name)
+				}
+
+				if (*got.Parameters)[i].Description != tc.wantParams[i].Description {
+					t.Errorf("Parameters[%d].Description: expected %q, got %q",
+						i, tc.wantParams[i].Description, (*got.Parameters)[i].Description)
+				}
+			}
+		})
 	}
 }
