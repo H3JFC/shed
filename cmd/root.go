@@ -80,7 +80,6 @@ func init() {
 	rootCmd.AddCommand(command.RmCmd)
 	rootCmd.AddCommand(command.EditCmd)
 	rootCmd.AddCommand(command.DescribeCmd)
-	rootCmd.AddCommand(command.InitCmd)
 	rootCmd.AddCommand(command.CpCmd)
 }
 
@@ -141,12 +140,12 @@ func Init(shedDir string) error {
 }
 
 func isInitCommand(cmd *cobra.Command) bool {
-	if cmd.CalledAs() == command.InitCmd.Name() {
+	if cmd.CalledAs() == initCmd.Name() {
 		return true
 	}
 
-	if command.InitCmd.Aliases != nil {
-		return slices.Contains(command.InitCmd.Aliases, cmd.CalledAs())
+	if initCmd.Aliases != nil {
+		return slices.Contains(initCmd.Aliases, cmd.CalledAs())
 	}
 
 	return false
