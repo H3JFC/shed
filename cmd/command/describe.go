@@ -3,12 +3,15 @@ package command
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"h3jfc/shed/internal/logger"
 	"h3jfc/shed/internal/store"
+	"h3jfc/shed/lib/brackets"
+	"h3jfc/shed/lib/itertools"
 )
 
 // DescribeCmd represents the describe command.
@@ -50,6 +53,30 @@ Example:
 			return err
 		}
 
+		ss, err := brackets.ParseSecrets(cmd.Command)
+		if err != nil {
+			logger.Error("Failed to parse command for secrets", "error", err)
+
+			return err
+		}
+
+		keys := slices.Collect(itertools.Map(slices.Values(ss), func(s brackets.Secret) string {
+			return s.Key
+		}))
+
+		secrets, err := s.GetSecretsByKeys(keys)
+		if err != nil {
+			logger.Error("Failed to get secrets", "error", err)
+
+			return err
+		}
+
+		missingSecrets := itertools.Filter(keys, func(key string) bool {
+			return !slices.ContainsFunc(*secrets, func(secret store.Secret) bool {
+				return secret.Key == key
+			})
+		})
+
 		var sb strings.Builder
 
 		fmt.Fprintf(&sb, "\nID:          %d\n", cmd.ID)
@@ -70,10 +97,40 @@ Example:
 		}
 
 		fmt.Fprintf(&sb, "\nCreated:     %s\n", cmd.CreatedAt)
-		fmt.Fprintf(&sb, "Updated:     %s", cmd.UpdatedAt)
+		fmt.Fprintf(&sb, "Updated:     %s\n", cmd.UpdatedAt)
+
+		writeSecrets(sb, secrets)
+		writeMissingSecrets(sb, missingSecrets)
 
 		logger.Info(sb.String())
 
 		return nil
 	},
+}
+
+func writeSecrets(sb strings.Builder, secrets *[]store.Secret) {
+	fmt.Fprintf(&sb, "Secrets:  %d", len(*secrets))
+
+	if len(*secrets) > 0 {
+		sb.WriteString("\n  Details:")
+
+		for _, secret := range *secrets {
+			if secret.Description != "" {
+				fmt.Fprintf(&sb, "\n    - %s: %s", secret.Key, secret.Description)
+			} else {
+				fmt.Fprintf(&sb, "\n    - %s", secret.Key)
+			}
+		}
+	}
+}
+
+func writeMissingSecrets(sb strings.Builder, missingSecrets []string) {
+	if len(missingSecrets) > 0 {
+		fmt.Fprintf(&sb, "\nMissing Secrets:  %d", len(missingSecrets))
+		sb.WriteString("\n  Details:")
+
+		for _, secret := range missingSecrets {
+			fmt.Fprintf(&sb, "\n    - %s", secret)
+		}
+	}
 }

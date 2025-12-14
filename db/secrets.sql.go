@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"strings"
 )
 
 const createSecret = `-- name: CreateSecret :one
@@ -91,6 +92,51 @@ func (q *Queries) GetSecretByKey(ctx context.Context, key string) (Secret, error
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getSecretsByKeys = `-- name: GetSecretsByKeys :many
+SELECT id, "key", value, description, created_at, updated_at FROM secrets
+WHERE key IN (/*SLICE:keys*/?)
+`
+
+func (q *Queries) GetSecretsByKeys(ctx context.Context, keys []string) ([]Secret, error) {
+	query := getSecretsByKeys
+	var queryParams []interface{}
+	if len(keys) > 0 {
+		for _, v := range keys {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:keys*/?", strings.Repeat(",?", len(keys))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:keys*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Secret
+	for rows.Next() {
+		var i Secret
+		if err := rows.Scan(
+			&i.ID,
+			&i.Key,
+			&i.Value,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listSecrets = `-- name: ListSecrets :many

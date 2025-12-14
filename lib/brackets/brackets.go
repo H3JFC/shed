@@ -52,7 +52,7 @@ type ValuedParameter struct {
 }
 
 type Secret struct {
-	Name        string `json:"name,omitempty"`
+	Key         string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 }
 
@@ -243,6 +243,10 @@ func (vp *ValuedParameters) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	params = itertools.Filter(params, func(p ValuedParameter) bool {
+		return p.Name[0] != bang
+	})
+
 	// Sort by name
 	sort.Slice(params, func(i, j int) bool {
 		return params[i].Name < params[j].Name
@@ -358,7 +362,10 @@ func ParseSecrets(input string) (Secrets, error) {
 	}
 
 	ss := itertools.Map(slices.Values(pp), func(p Parameter) Secret {
-		return Secret(p)
+		return Secret{
+			Key:         p.Name,
+			Description: p.Description,
+		}
 	})
 
 	return slices.Collect(ss), nil
@@ -424,7 +431,9 @@ func ParseCommand(input string) (string, error) {
 }
 
 func Parse(input string) (*Brackets, error) {
-	cmd, err := ParseCommand(input)
+	var err error
+
+	input, err = ParseCommand(input)
 	if err != nil {
 		return nil, err
 	}
@@ -440,7 +449,7 @@ func Parse(input string) (*Brackets, error) {
 	}
 
 	return &Brackets{
-		Command:    cmd,
+		Command:    input,
 		Parameters: &p,
 		Secrets:    &s,
 	}, err

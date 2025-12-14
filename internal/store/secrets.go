@@ -88,3 +88,12 @@ func (s *Store) GetSecretByKey(key string) (*Secret, error) {
 
 	return &secret, nil
 }
+
+func (s *Store) GetSecretsByKeys(keys []string) (*[]Secret, error) {
+	secrets, err := s.queries.GetSecretsByKeys(context.Background(), keys)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secrets by keys: %w", err)
+	}
+
+	return &secrets, nil
+}

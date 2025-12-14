@@ -27,15 +27,18 @@
 
 - [x] Interpolate {{!secret|description}} as a valid secret Parameters
   - [x] Brackets.ParseSecret
-- [ ] "shed add secret --description|-d <KEY> <VALUE>"
+- [x] "shed add secret --description|-d <KEY> <VALUE>"
   - [x] store.AddSecret
-- [ ] "shed list secrets"
+- [x] "shed list secrets"
   - [x] store.ListSecrets
-- [ ] "shed edit secret --description|-d <KEY> <VALUE>"
+- [x] "shed edit secret --description|-d <KEY> <VALUE>"
   - [x] store.UpdateSecret
-- [ ] "shed rm secret <KEY>"
+- [x] "shed rm secret <KEY>"
   - [x] store.RemoveSecret
-- [ ] Modify shed add|edit to check for new secrets
+
+## Next
+
+- [x] Modify shed add|edit to check for new secrets
   - Warn user if secret does not exist yet
   - Prompt user to create secret with secret command
 
@@ -43,3 +46,4 @@
 
 - [ ] "shed run <COMMAND_NAME>"
   - [ ] Execute Library to split command and then execute
+- [x] update shed command describe <COMMAND_NAME> to list secrets

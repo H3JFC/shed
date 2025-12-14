@@ -929,7 +929,7 @@ func TestValuedParameters_MarshalJSON(t *testing.T) {
 	}
 }
 
-func TestValuedParameters_UnmarshalJSON(t *testing.T) {
+func TestValuedParameters_UnmarshalJSON(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	tests := []struct {
@@ -944,6 +944,13 @@ func TestValuedParameters_UnmarshalJSON(t *testing.T) {
 			expected: ValuedParameters{
 				{Name: "apple", Value: "first"},
 				{Name: "zebra", Value: "last"},
+			},
+		},
+		{
+			name: "filters out values preceded with a bang!",
+			json: `[{"name":"!secret","value":"last"},{"name":"apple","value":"first"}]`,
+			expected: ValuedParameters{
+				{Name: "apple", Value: "first"},
 			},
 		},
 		{
@@ -2004,8 +2011,8 @@ func TestParseSecrets_OK(t *testing.T) { //nolint:funlen
 			}
 
 			for i := range got {
-				if got[i].Name != tc.want[i].Name {
-					t.Errorf("at index %d, expected name: %q got name: %q", i, tc.want[i].Name, got[i].Name)
+				if got[i].Key != tc.want[i].Key {
+					t.Errorf("at index %d, expected name: %q got name: %q", i, tc.want[i].Key, got[i].Key)
 				}
 
 				if got[i].Description != tc.want[i].Description {
@@ -2161,9 +2168,9 @@ func TestParseSecrets_IgnoresParameters(t *testing.T) {
 			}
 
 			for i := range got {
-				if got[i].Name != tc.wantSecrets[i].Name {
+				if got[i].Key != tc.wantSecrets[i].Key {
 					t.Errorf("Secrets[%d].Name: expected %q, got %q",
-						i, tc.wantSecrets[i].Name, got[i].Name)
+						i, tc.wantSecrets[i].Key, got[i].Key)
 				}
 
 				if got[i].Description != tc.wantSecrets[i].Description {

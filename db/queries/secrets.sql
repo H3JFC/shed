@@ -11,6 +11,10 @@ WHERE id = ?;
 SELECT * FROM secrets
 WHERE key = ?;
 
+-- name: GetSecretsByKeys :many
+SELECT * FROM secrets
+WHERE key IN (sqlc.slice('keys'));
+
 -- name: ListSecrets :many
 SELECT * FROM secrets
 ORDER BY created_at DESC;
