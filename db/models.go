@@ -19,9 +19,10 @@ type Command struct {
 }
 
 type Secret struct {
-	ID        int64
-	Key       string
-	Value     string
-	CreatedAt string
-	UpdatedAt string
+	ID          int64
+	Key         string
+	Value       string
+	Description string
+	CreatedAt   string
+	UpdatedAt   string
 }

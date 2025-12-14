@@ -1,6 +1,6 @@
 -- name: CreateSecret :one
-INSERT INTO secrets (key, value)
-VALUES (?, ?)
+INSERT INTO secrets (key, value, description)
+VALUES (?, ?, ?)
 RETURNING *;
 
 -- name: GetSecretByID :one
@@ -17,13 +17,13 @@ ORDER BY created_at DESC;
 
 -- name: UpdateSecret :one
 UPDATE secrets
-SET key = ?, value = ?
+SET key = ?, value = ?, description = ?
 WHERE id = ?
 RETURNING *;
 
 -- name: UpdateSecretByKey :one
 UPDATE secrets
-SET value = ?
+SET value = ?, description = ?
 WHERE key = ?
 RETURNING *;
 
