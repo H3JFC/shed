@@ -7,6 +7,13 @@ import (
 	"testing"
 )
 
+const (
+	zshShell  = "zsh"
+	bashShell = "bash"
+	fishShell = "fish"
+	bashPath  = "/bin/bash"
+)
+
 func TestDetectShellPlatform_Linux(t *testing.T) {
 	t.Parallel()
 
@@ -30,7 +37,7 @@ func TestDetectShellPlatform_Linux(t *testing.T) {
 	}
 
 	// On Linux, should default to bash or detect from $SHELL
-	if config.Name != "bash" && config.Name != "zsh" && config.Name != "fish" {
+	if config.Name != bashShell && config.Name != zshShell && config.Name != fishShell {
 		t.Logf("Unexpected shell detected: %s (this is OK if it's a custom shell)", config.Name)
 	}
 }
@@ -38,13 +45,13 @@ func TestDetectShellPlatform_Linux(t *testing.T) {
 func TestShellConfigFromName_Bash(t *testing.T) {
 	t.Parallel()
 
-	config := shellConfigFromName("bash")
+	config := shellConfigFromName(bashShell)
 
-	if config.Name != "bash" {
+	if config.Name != bashShell {
 		t.Errorf("shellConfigFromName(bash) name = %v, want bash", config.Name)
 	}
 
-	if config.Path != "/bin/bash" {
+	if config.Path != bashPath {
 		t.Errorf("shellConfigFromName(bash) path = %v, want /bin/bash", config.Path)
 	}
 
@@ -56,9 +63,9 @@ func TestShellConfigFromName_Bash(t *testing.T) {
 func TestShellConfigFromName_Zsh(t *testing.T) {
 	t.Parallel()
 
-	config := shellConfigFromName("zsh")
+	config := shellConfigFromName(zshShell)
 
-	if config.Name != "zsh" {
+	if config.Name != zshShell {
 		t.Errorf("shellConfigFromName(zsh) name = %v, want zsh", config.Name)
 	}
 
@@ -74,9 +81,9 @@ func TestShellConfigFromName_Zsh(t *testing.T) {
 func TestShellConfigFromName_Fish(t *testing.T) {
 	t.Parallel()
 
-	config := shellConfigFromName("fish")
+	config := shellConfigFromName(fishShell)
 
-	if config.Name != "fish" {
+	if config.Name != fishShell {
 		t.Errorf("shellConfigFromName(fish) name = %v, want fish", config.Name)
 	}
 
@@ -93,13 +100,13 @@ func TestShellConfigFromPath_ValidPath(t *testing.T) {
 	t.Parallel()
 
 	// Test with /bin/bash which should exist on Linux
-	config := shellConfigFromPath("/bin/bash")
+	config := shellConfigFromPath(bashPath)
 
-	if config.Name != "bash" {
+	if config.Name != bashShell {
 		t.Errorf("shellConfigFromPath(/bin/bash) name = %v, want bash", config.Name)
 	}
 
-	if config.Path != "/bin/bash" {
+	if config.Path != bashPath {
 		t.Errorf("shellConfigFromPath(/bin/bash) path = %v, want /bin/bash", config.Path)
 	}
 }
@@ -115,10 +122,8 @@ func TestShellConfigFromPath_InvalidPath(t *testing.T) {
 	}
 }
 
+// nolint:paralleltest // This test checks actual files, so don't run in parallel
 func TestDetectShellsByConfigFiles_Linux(t *testing.T) {
-	// This test checks actual files, so don't run in parallel
-	// nolint:paralleltest
-
 	shells := detectShellsByConfigFiles()
 
 	// Should detect at least one shell (bash should have config files on most Linux systems)
@@ -128,16 +133,14 @@ func TestDetectShellsByConfigFiles_Linux(t *testing.T) {
 
 	// Verify detected shells are valid
 	for _, shell := range shells {
-		if shell != "bash" && shell != "zsh" && shell != "fish" {
+		if shell != bashShell && shell != zshShell && shell != fishShell {
 			t.Errorf("detectShellsByConfigFiles() returned unexpected shell: %s", shell)
 		}
 	}
 }
 
+// nolint:paralleltest // This test manipulates global state, so don't run in parallel
 func TestGetShellConfig_Caching(t *testing.T) {
-	// nolint:paralleltest
-	// This test manipulates global state, so don't run in parallel
-
 	ResetShellConfig()
 	defer ResetShellConfig()
 
@@ -156,10 +159,8 @@ func TestGetShellConfig_Caching(t *testing.T) {
 	}
 }
 
+// nolint:paralleltest // This test manipulates global state, so don't run in parallel
 func TestSetShellConfig_CustomShell(t *testing.T) {
-	// nolint:paralleltest
-	// This test manipulates global state, so don't run in parallel
-
 	ResetShellConfig()
 	defer ResetShellConfig()
 
@@ -186,15 +187,14 @@ func TestSetShellConfig_CustomShell(t *testing.T) {
 	}
 }
 
+// nolint:paralleltest // This test manipulates environment variables
 func TestDetectShellPlatform_WithSHELLEnv(t *testing.T) {
-	// nolint:paralleltest
-	// This test manipulates environment variables
-
 	ResetShellConfig()
 	defer ResetShellConfig()
 
 	// Save original $SHELL
 	originalShell := os.Getenv("SHELL")
+
 	defer func() {
 		if originalShell != "" {
 			os.Setenv("SHELL", originalShell)
@@ -205,12 +205,12 @@ func TestDetectShellPlatform_WithSHELLEnv(t *testing.T) {
 
 	// Determine which shell to test based on availability
 	// Try zsh first, fall back to bash which should always be available
-	testShell := "/bin/bash"
-	expectedName := "bash"
+	testShell := bashPath
+	expectedName := bashShell
 
 	if _, err := os.Stat("/bin/zsh"); err == nil {
 		testShell = "/bin/zsh"
-		expectedName = "zsh"
+		expectedName = zshShell
 	}
 
 	os.Setenv("SHELL", testShell)

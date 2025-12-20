@@ -61,6 +61,7 @@ func detectShellsByConfigFiles() []string {
 		for _, path := range paths {
 			if _, err := os.Stat(path); err == nil {
 				detected = append(detected, shell)
+
 				break // found one config for this shell, move to next
 			}
 		}

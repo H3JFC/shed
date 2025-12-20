@@ -64,7 +64,7 @@ lint: deps
 
 lint-fix: deps
 	@echo "Formatting and linting code with golangci-lint (auto-fix enabled, parallel)..."
-	golangci-lint run --fix --config .golangci.yaml --allow-parallel-runners &
+	golangci-lint run --fix --config .golangci.yaml --build-tags=sqlcipher,$(OS_TAG) --allow-parallel-runners &
 	wait
 	@echo "✅ Code formatting and linting completed with auto-fix"
 
