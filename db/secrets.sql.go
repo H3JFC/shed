@@ -7,26 +7,29 @@ package db
 
 import (
 	"context"
+	"strings"
 )
 
 const createSecret = `-- name: CreateSecret :one
-INSERT INTO secrets (key, value)
-VALUES (?, ?)
-RETURNING id, "key", value, created_at, updated_at
+INSERT INTO secrets (key, value, description)
+VALUES (?, ?, ?)
+RETURNING id, "key", value, description, created_at, updated_at
 `
 
 type CreateSecretParams struct {
-	Key   string
-	Value string
+	Key         string
+	Value       string
+	Description string
 }
 
 func (q *Queries) CreateSecret(ctx context.Context, arg CreateSecretParams) (Secret, error) {
-	row := q.db.QueryRowContext(ctx, createSecret, arg.Key, arg.Value)
+	row := q.db.QueryRowContext(ctx, createSecret, arg.Key, arg.Value, arg.Description)
 	var i Secret
 	err := row.Scan(
 		&i.ID,
 		&i.Key,
 		&i.Value,
+		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -54,7 +57,7 @@ func (q *Queries) DeleteSecretByKey(ctx context.Context, key string) error {
 }
 
 const getSecretByID = `-- name: GetSecretByID :one
-SELECT id, "key", value, created_at, updated_at FROM secrets
+SELECT id, "key", value, description, created_at, updated_at FROM secrets
 WHERE id = ?
 `
 
@@ -65,6 +68,7 @@ func (q *Queries) GetSecretByID(ctx context.Context, id int64) (Secret, error) {
 		&i.ID,
 		&i.Key,
 		&i.Value,
+		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -72,7 +76,7 @@ func (q *Queries) GetSecretByID(ctx context.Context, id int64) (Secret, error) {
 }
 
 const getSecretByKey = `-- name: GetSecretByKey :one
-SELECT id, "key", value, created_at, updated_at FROM secrets
+SELECT id, "key", value, description, created_at, updated_at FROM secrets
 WHERE key = ?
 `
 
@@ -83,14 +87,60 @@ func (q *Queries) GetSecretByKey(ctx context.Context, key string) (Secret, error
 		&i.ID,
 		&i.Key,
 		&i.Value,
+		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
+const getSecretsByKeys = `-- name: GetSecretsByKeys :many
+SELECT id, "key", value, description, created_at, updated_at FROM secrets
+WHERE key IN (/*SLICE:keys*/?)
+`
+
+func (q *Queries) GetSecretsByKeys(ctx context.Context, keys []string) ([]Secret, error) {
+	query := getSecretsByKeys
+	var queryParams []interface{}
+	if len(keys) > 0 {
+		for _, v := range keys {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:keys*/?", strings.Repeat(",?", len(keys))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:keys*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Secret
+	for rows.Next() {
+		var i Secret
+		if err := rows.Scan(
+			&i.ID,
+			&i.Key,
+			&i.Value,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSecrets = `-- name: ListSecrets :many
-SELECT id, "key", value, created_at, updated_at FROM secrets
+SELECT id, "key", value, description, created_at, updated_at FROM secrets
 ORDER BY created_at DESC
 `
 
@@ -107,6 +157,7 @@ func (q *Queries) ListSecrets(ctx context.Context) ([]Secret, error) {
 			&i.ID,
 			&i.Key,
 			&i.Value,
+			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -125,24 +176,31 @@ func (q *Queries) ListSecrets(ctx context.Context) ([]Secret, error) {
 
 const updateSecret = `-- name: UpdateSecret :one
 UPDATE secrets
-SET key = ?, value = ?
+SET key = ?, value = ?, description = ?
 WHERE id = ?
-RETURNING id, "key", value, created_at, updated_at
+RETURNING id, "key", value, description, created_at, updated_at
 `
 
 type UpdateSecretParams struct {
-	Key   string
-	Value string
-	ID    int64
+	Key         string
+	Value       string
+	Description string
+	ID          int64
 }
 
 func (q *Queries) UpdateSecret(ctx context.Context, arg UpdateSecretParams) (Secret, error) {
-	row := q.db.QueryRowContext(ctx, updateSecret, arg.Key, arg.Value, arg.ID)
+	row := q.db.QueryRowContext(ctx, updateSecret,
+		arg.Key,
+		arg.Value,
+		arg.Description,
+		arg.ID,
+	)
 	var i Secret
 	err := row.Scan(
 		&i.ID,
 		&i.Key,
 		&i.Value,
+		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -151,23 +209,25 @@ func (q *Queries) UpdateSecret(ctx context.Context, arg UpdateSecretParams) (Sec
 
 const updateSecretByKey = `-- name: UpdateSecretByKey :one
 UPDATE secrets
-SET value = ?
+SET value = ?, description = ?
 WHERE key = ?
-RETURNING id, "key", value, created_at, updated_at
+RETURNING id, "key", value, description, created_at, updated_at
 `
 
 type UpdateSecretByKeyParams struct {
-	Value string
-	Key   string
+	Value       string
+	Description string
+	Key         string
 }
 
 func (q *Queries) UpdateSecretByKey(ctx context.Context, arg UpdateSecretByKeyParams) (Secret, error) {
-	row := q.db.QueryRowContext(ctx, updateSecretByKey, arg.Value, arg.Key)
+	row := q.db.QueryRowContext(ctx, updateSecretByKey, arg.Value, arg.Description, arg.Key)
 	var i Secret
 	err := row.Scan(
 		&i.ID,
 		&i.Key,
 		&i.Value,
+		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

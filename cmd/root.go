@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"h3jfc/shed/cmd/command"
+	"h3jfc/shed/cmd/secret"
+	"h3jfc/shed/internal/config"
 	"h3jfc/shed/internal/logger"
 )
 
@@ -36,7 +38,7 @@ to quickly create a Cobra application.`,
 		logger.New(logger.ModeFromString(ll))
 
 		if !isInitCommand(c) {
-			initConfig()
+			initConfig(c.Flags().Lookup("shed-dir").Value.String())
 
 			if err := viper.BindPFlags(c.Flags()); err != nil {
 				logger.Debug("Error binding flags to viper config", "error", err)
@@ -68,14 +70,26 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().String("shed-dir", os.Getenv("SHED_DIR"), "Path to the Shed configuration directory")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose logging")
+
+	// Register secret commands
+	rootCmd.AddCommand(secret.Init())
+
+	// Register main commands
+	rootCmd.AddCommand(command.AddCmd)
+	rootCmd.AddCommand(command.ListCmd)
+	rootCmd.AddCommand(command.RunCmd)
+	rootCmd.AddCommand(command.RmCmd)
+	rootCmd.AddCommand(command.EditCmd)
+	rootCmd.AddCommand(command.DescribeCmd)
+	rootCmd.AddCommand(command.CpCmd)
 }
 
 // initConfig reads in config file and ENV variables.
-func initConfig() {
+func initConfig(shedDir string) {
 	// Initialize the configuration system
-	logger.Info("initconfig")
+	logger.Info("initializing config")
 
-	if err := Init(); err != nil {
+	if err := Init(shedDir); err != nil {
 		logger.Error("Error initializing config: %v\n", err)
 		os.Exit(1)
 	}
@@ -87,32 +101,41 @@ func initConfig() {
 }
 
 // Init initializes the configuration system.
-func Init() error {
+func Init(shedDir string) error {
 	// Set up Viper
-	viper.SetConfigName("shed")
+	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
 	viper.SetEnvPrefix("SHED")
 	viper.AutomaticEnv()
 
-	// Get home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get user home directory: %w", err)
+	if shedDir != "" {
+		logger.Debug("Using provided shed directory", "path", shedDir)
+		viper.AddConfigPath(shedDir)
 	}
 
-	// Create .shed directory if it doesn't exist.
-	shedDir := filepath.Join(homeDir, ".shed")
-	viper.AddConfigPath(shedDir)
+	logger.Debug("Added shed directory to config paths", "path", shedDir)
+
+	// Add default config paths
+	for _, path := range config.DefaultConfigPaths {
+		logger.Debug("Adding default config path", "path", path)
+		viper.AddConfigPath(path)
+	}
 
 	// Set defaults
 	viper.SetDefault("commit", Commit)
 
 	// Read config file (it's okay if it doesn't exist)
 	if err := viper.ReadInConfig(); err != nil {
+		logger.Debug(fmt.Sprintf("received an error while opening viper config: %v", err))
+
 		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			return fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
+
+	dbPath := viper.GetString("shed-db.location")
+	encryptionKey := viper.GetString("shed-db.password")
+	logger.Debug("Database configuration", "path", dbPath, "encryption_key_set", encryptionKey != "")
 
 	return nil
 }

@@ -26,3 +26,14 @@ func Map2[T, U any](seq iter.Seq[T], f func(T) (U, error)) iter.Seq2[U, error] {
 		}
 	}
 }
+
+func Filter[T any](s []T, predicate func(T) bool) []T {
+	result := make([]T, 0, len(s))
+	for _, v := range s {
+		if predicate(v) {
+			result = append(result, v)
+		}
+	}
+
+	return result
+}

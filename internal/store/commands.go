@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	"h3jfc/shed/db"
+	"h3jfc/shed/internal/logger"
 	"h3jfc/shed/lib/brackets"
 	"h3jfc/shed/lib/itertools"
 	"h3jfc/shed/lib/sqlite3"
@@ -37,8 +38,18 @@ type Store struct {
 }
 
 func NewStoreFromConfig() (*Store, error) {
+	logger.Debug("initializing store from config")
+
 	dbPath := viper.GetString("shed-db.location")
 	encryptionKey := viper.GetString("shed-db.password")
+
+	if dbPath == "" {
+		return nil, fmt.Errorf("database path is not set: %w", ErrNotFound)
+	}
+
+	if encryptionKey == "" {
+		return nil, fmt.Errorf("database encryption key is not set: %w", ErrNotFound)
+	}
 
 	dbtx, err := sqlite3.DB(dbPath, encryptionKey)
 	if err != nil {
@@ -71,14 +82,9 @@ func (s *Store) AddCommand(name, command, description string) (*Command, error) 
 		return nil, err
 	}
 
-	c, err := brackets.ParseCommand(command)
+	b, err := brackets.Parse(command)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse command: %w", err)
-	}
-
-	p, err := brackets.ParseParameters(c)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse command parameters: %w", err)
+		return nil, fmt.Errorf("failed to parse command for parameters: %w", err)
 	}
 
 	_, err = s.GetCommandByName(name)
@@ -86,12 +92,31 @@ func (s *Store) AddCommand(name, command, description string) (*Command, error) 
 		return nil, fmt.Errorf("command with name %q already exists: %w", name, ErrAlreadyExists)
 	}
 
-	cmd, err := s.createCommand(name, c, description, p)
+	cmd, err := s.createCommand(name, b.Command, description, *b.Parameters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create command: %w", err)
 	}
 
+	s.VerifySecretsExist(b)
+
 	return cmd, nil
+}
+
+func (s *Store) VerifySecretsExist(b *brackets.Brackets) {
+	for _, secret := range *b.Secrets {
+		_, err := s.GetSecretByKey(secret.Key)
+		if err != nil {
+			descriptonFlag := ""
+			if secret.Description != "" {
+				descriptonFlag = secret.Description
+			}
+
+			commandMsg := "you may need to add this secret with 'shed secret add %s <VALUE>%s'"
+
+			logger.Warn(fmt.Sprintf("could not find secret %s for given command", secret.Key))
+			logger.Warn(fmt.Sprintf(commandMsg, secret.Key, descriptonFlag))
+		}
+	}
 }
 
 func (s *Store) CopyCommand(srcName, destName, jsonValueParams string) (*Command, error) {
@@ -135,12 +160,12 @@ func (s *Store) UpdateCommand(
 		return nil, err
 	}
 
-	c, err := brackets.ParseCommand(command)
+	b, err := brackets.Parse(command)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse command: %w", err)
+		return nil, fmt.Errorf("failed to parse command for parameters: %w", err)
 	}
 
-	c, err = brackets.HydrateStringFromJSON(c, jsonValueParams)
+	c, err := brackets.HydrateStringFromJSON(b.Command, jsonValueParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hydrate command from json: %w", err)
 	}
@@ -161,6 +186,8 @@ func (s *Store) UpdateCommand(
 	if err != nil {
 		return nil, fmt.Errorf("failed to update command: %w", err)
 	}
+
+	s.VerifySecretsExist(b)
 
 	return cmd, nil
 }

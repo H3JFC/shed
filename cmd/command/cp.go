@@ -1,4 +1,4 @@
-package cmd
+package command
 
 import (
 	"encoding/json"
@@ -16,8 +16,8 @@ const (
 	cpMaxArgs = 3
 )
 
-// cpCmd represents the cp command.
-var cpCmd = &cobra.Command{
+// CpCmd represents the cp command.
+var CpCmd = &cobra.Command{
 	Use:   "cp <COMMAND_SRC_NAME> <COMMAND_DEST_NAME> [jsonValueParams]",
 	Short: "Copy a command with optional parameter value substitutions",
 	Long: `Copy an existing command to a new name, optionally providing values for parameters.
@@ -116,8 +116,4 @@ func validateJSON(jsonStr string) error {
 	}
 
 	return nil
-}
-
-func init() {
-	rootCmd.AddCommand(cpCmd)
 }

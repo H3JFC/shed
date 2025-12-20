@@ -535,3 +535,152 @@ func TestMap2_MultipleErrorsOnlyReturnsFirst(t *testing.T) {
 		t.Errorf("expected 'error at 2', got '%v'", gotErr)
 	}
 }
+
+func TestFilter_EvenNumbers(t *testing.T) {
+	t.Parallel()
+
+	input := []int{1, 2, 3, 4, 5, 6}
+	filtered := Filter(input, func(n int) bool { return n%2 == 0 })
+
+	want := []int{2, 4, 6}
+
+	if !slices.Equal(filtered, want) {
+		t.Errorf("expected %v, got %v", want, filtered)
+	}
+}
+
+func TestFilter_OddNumbers(t *testing.T) {
+	t.Parallel()
+
+	input := []int{1, 2, 3, 4, 5, 6}
+	filtered := Filter(input, func(n int) bool { return n%2 != 0 })
+
+	want := []int{1, 3, 5}
+
+	if !slices.Equal(filtered, want) {
+		t.Errorf("expected %v, got %v", want, filtered)
+	}
+}
+
+func TestFilter_StringLength(t *testing.T) {
+	t.Parallel()
+
+	input := []string{"go", "rust", "c", "python", "java"}
+	filtered := Filter(input, func(s string) bool { return len(s) > 3 })
+
+	want := []string{"rust", "python", "java"}
+
+	if !slices.Equal(filtered, want) {
+		t.Errorf("expected %v, got %v", want, filtered)
+	}
+}
+
+func TestFilter_EmptySlice(t *testing.T) {
+	t.Parallel()
+
+	input := []int{}
+	filtered := Filter(input, func(n int) bool { return n > 0 })
+
+	if len(filtered) != 0 {
+		t.Errorf("expected empty slice, got %v", filtered)
+	}
+}
+
+func TestFilter_NoMatches(t *testing.T) {
+	t.Parallel()
+
+	input := []int{1, 2, 3, 4, 5}
+	filtered := Filter(input, func(n int) bool { return n > 10 })
+
+	if len(filtered) != 0 {
+		t.Errorf("expected empty slice, got %v", filtered)
+	}
+}
+
+func TestFilter_StructFields(t *testing.T) {
+	t.Parallel()
+
+	type Person struct {
+		Name string
+		Age  int
+	}
+
+	input := []Person{
+		{Name: "Alice", Age: 30},
+		{Name: "Bob", Age: 17},
+		{Name: "Charlie", Age: 25},
+		{Name: "Dave", Age: 16},
+	}
+
+	filtered := Filter(input, func(p Person) bool { return p.Age >= 18 })
+
+	want := []Person{
+		{Name: "Alice", Age: 30},
+		{Name: "Charlie", Age: 25},
+	}
+
+	if !slices.Equal(filtered, want) {
+		t.Errorf("expected %v, got %v", want, filtered)
+	}
+}
+
+func TestFilter_PointerValues(t *testing.T) {
+	t.Parallel()
+
+	val1, val2, val3 := 1, 2, 3
+	input := []*int{&val1, nil, &val2, nil, &val3}
+
+	filtered := Filter(input, func(p *int) bool { return p != nil })
+
+	if len(filtered) != 3 {
+		t.Errorf("expected 3 non-nil pointers, got %d", len(filtered))
+	}
+
+	for i, ptr := range filtered {
+		if ptr == nil {
+			t.Errorf("element %d should not be nil", i)
+		}
+	}
+}
+
+func TestFilter_NegativeNumbers(t *testing.T) {
+	t.Parallel()
+
+	input := []int{-3, -1, 0, 1, 2, 3, -5}
+	filtered := Filter(input, func(n int) bool { return n < 0 })
+
+	want := []int{-3, -1, -5}
+
+	if !slices.Equal(filtered, want) {
+		t.Errorf("expected %v, got %v", want, filtered)
+	}
+}
+
+func TestFilter_PreservesOrder(t *testing.T) {
+	t.Parallel()
+
+	input := []int{5, 1, 8, 2, 9, 3, 6}
+	filtered := Filter(input, func(n int) bool { return n > 4 })
+
+	want := []int{5, 8, 9, 6}
+
+	if !slices.Equal(filtered, want) {
+		t.Errorf("expected %v, got %v", want, filtered)
+	}
+}
+
+func TestFilter_ComplexPredicate(t *testing.T) {
+	t.Parallel()
+
+	input := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	// Filter for numbers divisible by 2 or 3
+	filtered := Filter(input, func(n int) bool {
+		return n%2 == 0 || n%3 == 0
+	})
+
+	want := []int{2, 3, 4, 6, 8, 9, 10}
+
+	if !slices.Equal(filtered, want) {
+		t.Errorf("expected %v, got %v", want, filtered)
+	}
+}

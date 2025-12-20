@@ -1,4 +1,4 @@
-package cmd
+package command
 
 import (
 	"errors"
@@ -9,8 +9,8 @@ import (
 	"h3jfc/shed/internal/store"
 )
 
-// rmCmd represents the rm command.
-var rmCmd = &cobra.Command{
+// RmCmd represents the rm command.
+var RmCmd = &cobra.Command{
 	Use:   "rm <COMMAND_NAME>",
 	Short: "Remove a command from shed",
 	Long: `Remove an existing command from shed by name.
@@ -54,8 +54,4 @@ Example:
 
 		return nil
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(rmCmd)
 }
