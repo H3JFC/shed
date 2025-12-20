@@ -120,29 +120,28 @@ jobs:
       - name: Install dependencies (Linux ARM64)
         if: matrix.goos == 'linux' && matrix.goarch == 'arm64'
         run: |
-          # Install cross-compiler
+          # Install cross-compiler and build tools
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y gcc-aarch64-linux-gnu git make libssl-dev tcl-dev
 
-          # Create directory for ARM64 libraries
+          # Build SQLCipher from source for ARM64
           mkdir -p $HOME/arm64-libs
-
-          # Download ARM64 packages from ports.ubuntu.com
           cd $HOME/arm64-libs
-          wget http://ports.ubuntu.com/pool/universe/s/sqlcipher/libsqlcipher-dev_4.6.0-1_arm64.deb
-          wget http://ports.ubuntu.com/pool/universe/s/sqlcipher/libsqlcipher0_4.6.0-1_arm64.deb
-          wget http://ports.ubuntu.com/pool/main/o/openssl/libssl-dev_3.0.13-0ubuntu3.4_arm64.deb
-          wget http://ports.ubuntu.com/pool/main/o/openssl/libssl3t64_3.0.13-0ubuntu3.4_arm64.deb
 
-          # Extract .deb files
-          for deb in *.deb; do
-            dpkg-deb -x $deb .
-          done
+          # Clone and build SQLCipher
+          git clone --depth 1 --branch v4.6.1 https://github.com/sqlcipher/sqlcipher.git
+          cd sqlcipher
+          ./configure --host=aarch64-linux-gnu --prefix=$HOME/arm64-libs/usr \
+            --enable-tempstore=yes \
+            CFLAGS="-DSQLITE_HAS_CODEC" \
+            LDFLAGS="-lcrypto"
+          make
+          make install
 
           # Set up environment variables for cross-compilation
-          echo "PKG_CONFIG_PATH=$HOME/arm64-libs/usr/lib/aarch64-linux-gnu/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$HOME/arm64-libs/usr/lib/pkgconfig" >> $GITHUB_ENV
           echo "CGO_CFLAGS=-I$HOME/arm64-libs/usr/include" >> $GITHUB_ENV
-          echo "CGO_LDFLAGS=-L$HOME/arm64-libs/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
+          echo "CGO_LDFLAGS=-L$HOME/arm64-libs/usr/lib" >> $GITHUB_ENV
 
       # macOS dependencies
       - name: Install dependencies (macOS ARM64)
