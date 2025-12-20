@@ -77,6 +77,7 @@ func init() {
 	// Register main commands
 	rootCmd.AddCommand(command.AddCmd)
 	rootCmd.AddCommand(command.ListCmd)
+	rootCmd.AddCommand(command.RunCmd)
 	rootCmd.AddCommand(command.RmCmd)
 	rootCmd.AddCommand(command.EditCmd)
 	rootCmd.AddCommand(command.DescribeCmd)
