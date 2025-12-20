@@ -7,6 +7,10 @@ import (
 	"h3jfc/shed/internal/logger"
 )
 
+const (
+	windowsOS = "windows"
+)
+
 func TestRun_Success(t *testing.T) {
 	t.Parallel()
 
@@ -14,7 +18,7 @@ func TestRun_Success(t *testing.T) {
 	logger.New(logger.ModeFromString("message-level"))
 
 	var command string
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		command = "Write-Host 'test output'"
 	} else {
 		command = "echo 'test output'"
@@ -33,7 +37,7 @@ func TestRun_StdoutOutput(t *testing.T) {
 	logger.New(logger.ModeFromString("message-level"))
 
 	var command string
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		command = "Write-Host 'line1'; Write-Host 'line2'; Write-Host 'line3'"
 	} else {
 		command = "echo 'line1' && echo 'line2' && echo 'line3'"
@@ -52,7 +56,7 @@ func TestRun_StderrOutput(t *testing.T) {
 	logger.New(logger.ModeFromString("message-level"))
 
 	var command string
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		command = "[Console]::Error.WriteLine('error message')"
 	} else {
 		command = "echo 'error message' >&2"
@@ -70,12 +74,7 @@ func TestRun_CommandFailure(t *testing.T) {
 	// Initialize logger for testing
 	logger.New(logger.ModeFromString("message-level"))
 
-	var command string
-	if runtime.GOOS == "windows" {
-		command = "nonexistentcommand12345"
-	} else {
-		command = "nonexistentcommand12345"
-	}
+	command := "nonexistentcommand12345"
 
 	err := Run(command)
 	if err == nil {
@@ -89,12 +88,7 @@ func TestRun_ExitCode(t *testing.T) {
 	// Initialize logger for testing
 	logger.New(logger.ModeFromString("message-level"))
 
-	var command string
-	if runtime.GOOS == "windows" {
-		command = "exit 1"
-	} else {
-		command = "exit 1"
-	}
+	command := "exit 1"
 
 	err := Run(command)
 	if err == nil {
@@ -109,7 +103,7 @@ func TestRun_MixedOutput(t *testing.T) {
 	logger.New(logger.ModeFromString("message-level"))
 
 	var command string
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		command = "Write-Host 'stdout message'; [Console]::Error.WriteLine('stderr message')"
 	} else {
 		command = "echo 'stdout message' && echo 'stderr message' >&2"
@@ -128,7 +122,7 @@ func TestRun_ComplexCommand(t *testing.T) {
 	logger.New(logger.ModeFromString("message-level"))
 
 	var command string
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		// Test pipe in PowerShell
 		command = "Write-Host 'hello' | ForEach-Object { $_.ToUpper() }"
 	} else {
@@ -154,7 +148,7 @@ func TestRun_EnvironmentVariables(t *testing.T) {
 	t.Setenv("SHED_TEST_VAR", testValue)
 
 	var command string
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		command = "Write-Host $env:SHED_TEST_VAR"
 	} else {
 		command = "echo $SHED_TEST_VAR"
@@ -173,7 +167,7 @@ func TestRun_MultilineCommand(t *testing.T) {
 	logger.New(logger.ModeFromString("message-level"))
 
 	var command string
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		command = "Write-Host 'line1'; Write-Host 'line2'"
 	} else {
 		command = "echo 'line1'\necho 'line2'"
@@ -192,7 +186,7 @@ func TestRun_ShellBuiltins(t *testing.T) {
 	logger.New(logger.ModeFromString("message-level"))
 
 	var command string
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		// Get-Location is a PowerShell builtin
 		command = "Get-Location"
 	} else {
@@ -213,7 +207,7 @@ func TestRun_LongRunningCommand(t *testing.T) {
 	logger.New(logger.ModeFromString("message-level"))
 
 	var command string
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		command = "Start-Sleep -Milliseconds 100; Write-Host 'done'"
 	} else {
 		command = "sleep 0.1 && echo 'done'"

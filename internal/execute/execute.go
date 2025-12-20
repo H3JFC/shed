@@ -71,6 +71,7 @@ func Run(command string) error {
 	shellConfig := GetShellConfig()
 
 	// Create command with proper shell invocation
+	// #nosec G204 -- Command execution is the intended functionality of this package
 	cmd := exec.Command(shellConfig.Path, append(shellConfig.Args, command)...)
 
 	// Get pipes for stdout and stderr

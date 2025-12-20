@@ -28,11 +28,15 @@ var (
 func GetShellConfig() ShellConfig {
 	// Fast path: read lock for cached value
 	shellMutex.RLock()
+
 	if shellDetected {
 		config := cachedShell
+
 		shellMutex.RUnlock()
+
 		return config
 	}
+
 	shellMutex.RUnlock()
 
 	// Slow path: detect and cache

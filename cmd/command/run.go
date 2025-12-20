@@ -12,6 +12,10 @@ import (
 	"h3jfc/shed/lib/brackets"
 )
 
+const (
+	maxRunArgs = 2
+)
+
 // RunCmd represents the run command.
 var RunCmd = &cobra.Command{
 	Use:   "run <COMMAND_NAME> [jsonValueParams]",
@@ -36,12 +40,12 @@ Examples:
 
   # List available commands
   shed list`,
-	Args: cobra.RangeArgs(1, 2),
+	Args: cobra.RangeArgs(1, maxRunArgs),
 	RunE: func(_ *cobra.Command, args []string) error {
 		commandName := args[0]
 
 		jsonValueParams := "{}"
-		if len(args) == 2 {
+		if len(args) == maxRunArgs {
 			jsonValueParams = args[1]
 		}
 
@@ -50,6 +54,7 @@ Examples:
 		s, err := store.NewStoreFromConfig()
 		if err != nil {
 			logger.Error("Failed to initialize store", "error", err)
+
 			return err
 		}
 
@@ -57,6 +62,7 @@ Examples:
 		cmd, err := s.GetCommandByName(commandName)
 		if err != nil {
 			logger.Error("Failed to get command", "name", commandName, "error", err)
+
 			return err
 		}
 
@@ -69,6 +75,7 @@ Examples:
 		// Validate JSON format
 		if err := validateJSON(jsonValueParams); err != nil {
 			logger.Error("Invalid JSON parameter format", "error", err)
+
 			return fmt.Errorf("invalid JSON format: %w", err)
 		}
 
@@ -76,6 +83,7 @@ Examples:
 		parsed, err := brackets.Parse(cmd.Command)
 		if err != nil {
 			logger.Error("Failed to parse command", "error", err)
+
 			return fmt.Errorf("failed to parse command: %w", err)
 		}
 
@@ -83,6 +91,7 @@ Examples:
 		var paramMap map[string]string
 		if err := json.Unmarshal([]byte(jsonValueParams), &paramMap); err != nil {
 			logger.Error("Failed to parse parameters", "error", err)
+
 			return fmt.Errorf("failed to parse parameters: %w", err)
 		}
 
@@ -91,6 +100,7 @@ Examples:
 			secretValue, err := s.GetSecretByKey(secret.Key)
 			if err != nil {
 				logger.Error("Failed to get secret", "key", secret.Key, "error", err)
+
 				return fmt.Errorf("failed to get secret %s: %w", secret.Key, err)
 			}
 			// Secret parameters are prefixed with ! in the command string
@@ -102,6 +112,7 @@ Examples:
 		updatedParams, err := json.Marshal(paramMap)
 		if err != nil {
 			logger.Error("Failed to marshal parameters", "error", err)
+
 			return fmt.Errorf("failed to marshal parameters: %w", err)
 		}
 
@@ -109,6 +120,7 @@ Examples:
 		hydratedCmd, err := brackets.HydrateStringFromJSON(cmd.Command, string(updatedParams))
 		if err != nil {
 			logger.Error("Failed to hydrate command", "error", err)
+
 			return fmt.Errorf("failed to hydrate command: %w", err)
 		}
 
@@ -118,6 +130,7 @@ Examples:
 		// Execute the command
 		if err := execute.Run(hydratedCmd); err != nil {
 			logger.Error("Command execution failed", "error", err)
+
 			return fmt.Errorf("command execution failed: %w", err)
 		}
 

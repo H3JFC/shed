@@ -203,12 +203,21 @@ func TestDetectShellPlatform_WithSHELLEnv(t *testing.T) {
 		}
 	}()
 
-	// Set $SHELL to /bin/zsh
-	os.Setenv("SHELL", "/bin/zsh")
+	// Determine which shell to test based on availability
+	// Try zsh first, fall back to bash which should always be available
+	testShell := "/bin/bash"
+	expectedName := "bash"
+
+	if _, err := os.Stat("/bin/zsh"); err == nil {
+		testShell = "/bin/zsh"
+		expectedName = "zsh"
+	}
+
+	os.Setenv("SHELL", testShell)
 
 	config := detectShellPlatform()
 
-	if config.Name != "zsh" {
-		t.Errorf("detectShellPlatform() with SHELL=/bin/zsh got name = %v, want zsh", config.Name)
+	if config.Name != expectedName {
+		t.Errorf("detectShellPlatform() with SHELL=%s got name = %v, want %s", testShell, config.Name, expectedName)
 	}
 }
