@@ -69,14 +69,6 @@ jobs:
             artifact_name: shed-linux-amd64
             cc: gcc
 
-          # Linux ARM64 (cross-compilation)
-          - os: ubuntu-latest
-            goos: linux
-            goarch: arm64
-            build_tags: sqlcipher,linux
-            artifact_name: shed-linux-arm64
-            cc: aarch64-linux-gnu-gcc
-
           # macOS ARM64 (Apple Silicon)
           - os: macos-latest
             goos: darwin
@@ -111,37 +103,11 @@ jobs:
           go-version: '1.25.1'
 
       # Linux dependencies
-      - name: Install dependencies (Linux AMD64)
-        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+      - name: Install dependencies (Linux)
+        if: matrix.goos == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libsqlcipher-dev build-essential
-
-      - name: Install dependencies (Linux ARM64)
-        if: matrix.goos == 'linux' && matrix.goarch == 'arm64'
-        run: |
-          # Install cross-compiler and build tools
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu git make libssl-dev tcl-dev
-
-          # Build SQLCipher from source for ARM64
-          mkdir -p $HOME/arm64-libs
-          cd $HOME/arm64-libs
-
-          # Clone and build SQLCipher
-          git clone --depth 1 --branch v4.6.1 https://github.com/sqlcipher/sqlcipher.git
-          cd sqlcipher
-          ./configure --host=aarch64-linux-gnu --prefix=$HOME/arm64-libs/usr \
-            --enable-tempstore=yes \
-            CFLAGS="-DSQLITE_HAS_CODEC" \
-            LDFLAGS="-lcrypto"
-          make
-          make install
-
-          # Set up environment variables for cross-compilation
-          echo "PKG_CONFIG_PATH=$HOME/arm64-libs/usr/lib/pkgconfig" >> $GITHUB_ENV
-          echo "CGO_CFLAGS=-I$HOME/arm64-libs/usr/include" >> $GITHUB_ENV
-          echo "CGO_LDFLAGS=-L$HOME/arm64-libs/usr/lib" >> $GITHUB_ENV
 
       # macOS dependencies
       - name: Install dependencies (macOS ARM64)
@@ -261,7 +227,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- shed-linux-amd64" >> $GITHUB_STEP_SUMMARY
-          echo "- shed-linux-arm64" >> $GITHUB_STEP_SUMMARY
           echo "- shed-darwin-amd64" >> $GITHUB_STEP_SUMMARY
           echo "- shed-darwin-arm64" >> $GITHUB_STEP_SUMMARY
           echo "- shed-windows-amd64.exe" >> $GITHUB_STEP_SUMMARY
