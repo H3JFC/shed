@@ -1,0 +1,241 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # Required for creating releases and tags
+
+jobs:
+  validate:
+    name: Validate Branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch is main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "❌ This workflow can only be run on main branch"
+          echo "Current ref: ${{ github.ref }}"
+          exit 1
+
+      - name: Validate version format
+        run: |
+          if ! echo "${{ github.event.inputs.version }}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'; then
+            echo "❌ Invalid version format: ${{ github.event.inputs.version }}"
+            echo "Expected format: v1.0.0 or v1.0.0-beta.1"
+            exit 1
+          fi
+          echo "✅ Version format valid: ${{ github.event.inputs.version }}"
+
+  changelog:
+    name: Generate Changelog
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.generate.outputs.changelog }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog generation
+
+      - name: Generate changelog
+        id: generate
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          tag: ${{ github.event.inputs.version }}
+          includeInvalidCommits: true
+          excludeTypes: ''
+
+  build:
+    name: Build ${{ matrix.artifact_name }}
+    needs: changelog
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux AMD64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            build_tags: sqlcipher,linux
+            artifact_name: shed-linux-amd64
+            cc: gcc
+
+          # Linux ARM64 (cross-compilation)
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            build_tags: sqlcipher,linux
+            artifact_name: shed-linux-arm64
+            cc: aarch64-linux-gnu-gcc
+
+          # macOS ARM64 (Apple Silicon)
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            build_tags: sqlcipher,darwin
+            artifact_name: shed-darwin-arm64
+            cc: clang
+
+          # macOS AMD64 (Intel)
+          - os: macos-13
+            goos: darwin
+            goarch: amd64
+            build_tags: sqlcipher,darwin
+            artifact_name: shed-darwin-amd64
+            cc: clang
+
+          # Windows AMD64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            build_tags: sqlcipher,windows
+            artifact_name: shed-windows-amd64.exe
+            cc: gcc
+
+          # Windows ARM64
+          - os: windows-latest
+            goos: windows
+            goarch: arm64
+            build_tags: sqlcipher,windows
+            artifact_name: shed-windows-arm64.exe
+            cc: gcc
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.1'
+
+      # Linux dependencies
+      - name: Install dependencies (Linux AMD64)
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlcipher-dev build-essential
+
+      - name: Install dependencies (Linux ARM64)
+        if: matrix.goos == 'linux' && matrix.goarch == 'arm64'
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y libsqlcipher-dev:arm64
+
+      # macOS dependencies
+      - name: Install dependencies (macOS)
+        if: matrix.goos == 'darwin'
+        run: |
+          brew install sqlcipher
+
+      # Windows dependencies
+      - name: Setup MSYS2 (Windows)
+        if: matrix.goos == 'windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-sqlcipher
+
+      - name: Set Windows environment
+        if: matrix.goos == 'windows'
+        shell: msys2 {0}
+        run: |
+          echo "CGO_CFLAGS=-ID:/a/_temp/msys64/mingw64/include" >> $GITHUB_ENV
+          echo "CGO_LDFLAGS=-LD:/a/_temp/msys64/mingw64/lib" >> $GITHUB_ENV
+
+      - name: Build binary
+        env:
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc }}
+        run: |
+          go build \
+            -tags="${{ matrix.build_tags }}" \
+            -ldflags="-X h3jfc/shed/cmd.Commit=${{ github.sha }}" \
+            -o ${{ matrix.artifact_name }} \
+            main.go
+
+      - name: Verify binary
+        if: matrix.goos != 'windows'
+        run: |
+          file ${{ matrix.artifact_name }}
+          ls -lh ${{ matrix.artifact_name }}
+
+      - name: Verify binary (Windows)
+        if: matrix.goos == 'windows'
+        shell: pwsh
+        run: |
+          Get-Item ${{ matrix.artifact_name }} | Format-List
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+          retention-days: 1
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: [changelog, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: |
+          ls -R artifacts/
+          echo "---"
+          find artifacts -type f -exec ls -lh {} \;
+
+      - name: Flatten artifacts directory
+        run: |
+          mkdir -p release-artifacts
+          find artifacts -type f -exec cp {} release-artifacts/ \;
+          ls -lh release-artifacts/
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "release-artifacts/*"
+          body: ${{ needs.changelog.outputs.changelog }}
+          tag: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          draft: false
+          prerelease: ${{ contains(github.event.inputs.version, '-') }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          makeLatest: true
+
+      - name: Release Summary
+        run: |
+          echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- shed-linux-amd64" >> $GITHUB_STEP_SUMMARY
+          echo "- shed-linux-arm64" >> $GITHUB_STEP_SUMMARY
+          echo "- shed-darwin-amd64" >> $GITHUB_STEP_SUMMARY
+          echo "- shed-darwin-arm64" >> $GITHUB_STEP_SUMMARY
+          echo "- shed-windows-amd64.exe" >> $GITHUB_STEP_SUMMARY
+          echo "- shed-windows-arm64.exe" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.version }})" >> $GITHUB_STEP_SUMMARY
