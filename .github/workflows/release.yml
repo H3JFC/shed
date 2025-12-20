@@ -85,8 +85,8 @@ jobs:
             artifact_name: shed-darwin-arm64
             cc: clang
 
-          # macOS AMD64 (Intel)
-          - os: macos-13
+          # macOS AMD64 (Intel) - Cross-compiled from ARM64
+          - os: macos-latest
             goos: darwin
             goarch: amd64
             build_tags: sqlcipher,darwin
@@ -99,14 +99,6 @@ jobs:
             goarch: amd64
             build_tags: sqlcipher,windows
             artifact_name: shed-windows-amd64.exe
-            cc: gcc
-
-          # Windows ARM64
-          - os: windows-latest
-            goos: windows
-            goarch: arm64
-            build_tags: sqlcipher,windows
-            artifact_name: shed-windows-arm64.exe
             cc: gcc
 
     steps:
@@ -128,16 +120,45 @@ jobs:
       - name: Install dependencies (Linux ARM64)
         if: matrix.goos == 'linux' && matrix.goarch == 'arm64'
         run: |
+          # Restrict default sources to amd64 only to prevent 404 errors
+          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
+          sudo sed -i 's/^deb-src /deb-src [arch=amd64] /' /etc/apt/sources.list
+
+          # Add arm64 architecture
           sudo dpkg --add-architecture arm64
+
+          # Configure apt to use ports.ubuntu.com for arm64 packages
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" | sudo tee /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main universe" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
           sudo apt-get install -y libsqlcipher-dev:arm64
 
       # macOS dependencies
-      - name: Install dependencies (macOS)
-        if: matrix.goos == 'darwin'
+      - name: Install dependencies (macOS ARM64)
+        if: matrix.goos == 'darwin' && matrix.goarch == 'arm64'
         run: |
           brew install sqlcipher
+
+      - name: Install dependencies (macOS AMD64)
+        if: matrix.goos == 'darwin' && matrix.goarch == 'amd64'
+        run: |
+          # Install Rosetta 2 for x86_64 emulation
+          softwareupdate --install-rosetta --agree-to-license || true
+
+          # Check if x86_64 Homebrew exists, if not install it
+          if [ ! -f /usr/local/bin/brew ]; then
+            arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
+
+          # Install x86_64 version of sqlcipher
+          arch -x86_64 /usr/local/bin/brew install sqlcipher
+
+          # Set up CGO to use x86_64 libraries
+          echo "CGO_CFLAGS=-arch x86_64 -I/usr/local/opt/sqlcipher/include" >> $GITHUB_ENV
+          echo "CGO_LDFLAGS=-arch x86_64 -L/usr/local/opt/sqlcipher/lib" >> $GITHUB_ENV
 
       # Windows dependencies
       - name: Setup MSYS2 (Windows)
@@ -157,6 +178,7 @@ jobs:
           echo "CGO_LDFLAGS=-LD:/a/_temp/msys64/mingw64/lib" >> $GITHUB_ENV
 
       - name: Build binary
+        shell: bash
         env:
           CGO_ENABLED: 1
           GOOS: ${{ matrix.goos }}
@@ -236,6 +258,5 @@ jobs:
           echo "- shed-darwin-amd64" >> $GITHUB_STEP_SUMMARY
           echo "- shed-darwin-arm64" >> $GITHUB_STEP_SUMMARY
           echo "- shed-windows-amd64.exe" >> $GITHUB_STEP_SUMMARY
-          echo "- shed-windows-arm64.exe" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.version }})" >> $GITHUB_STEP_SUMMARY
