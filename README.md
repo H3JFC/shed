@@ -28,6 +28,7 @@ Download the latest release for your platform from the [Releases](https://github
 - `shed-windows-amd64.exe` - Windows (x86_64)
 
 Make the binary executable (Linux/macOS):
+
 ```bash
 chmod +x shed-*
 sudo mv shed-* /usr/local/bin/shed
@@ -36,6 +37,7 @@ sudo mv shed-* /usr/local/bin/shed
 ### Build from Source
 
 Requirements:
+
 - Go 1.25.1 or later
 - GCC (for CGO/SQLCipher support)
 - SQLCipher development libraries
@@ -53,6 +55,7 @@ sudo mv shed /usr/local/bin/
 ```
 
 Platform-specific build tags:
+
 - Linux: `-tags="sqlcipher,linux"`
 - macOS: `-tags="sqlcipher,darwin"`
 - Windows: `-tags="sqlcipher,windows"`
@@ -87,6 +90,7 @@ shed add deploy "curl -H 'Authorization: Bearer {{!api_key}}' https://api.exampl
 ### Commands
 
 #### `shed init`
+
 Initialize shed configuration and database.
 
 ```bash
@@ -94,6 +98,7 @@ shed init
 ```
 
 #### `shed add <name> <command>`
+
 Add a new command to shed.
 
 ```bash
@@ -111,16 +116,20 @@ shed add deploy "kubectl apply -f {{file|manifest file}} --token={{!k8s_token}}"
 ```
 
 **Parameter Syntax**: `{{name|description}}`
+
 - `name`: Parameter identifier (used internally)
 - `description`: Optional human-readable description shown in prompts
 
 **Secret Syntax**: `{{!key}}`
+
 - `key`: The secret key stored in shed
 
 Options:
+
 - `-d, --description`: Description of the command
 
 #### `shed list`
+
 List all stored commands.
 
 ```bash
@@ -128,6 +137,7 @@ shed list
 ```
 
 Output includes:
+
 - Command name
 - Command string
 - Description
@@ -135,6 +145,7 @@ Output includes:
 - Created/Updated timestamps
 
 #### `shed run <name>`
+
 Execute a stored command.
 
 ```bash
@@ -146,6 +157,7 @@ shed run greet
 Shed will interactively prompt for any parameters or secrets needed by the command.
 
 #### `shed describe <name>`
+
 Show detailed information about a command.
 
 ```bash
@@ -153,6 +165,7 @@ shed describe git_commit
 ```
 
 #### `shed edit <name>`
+
 Edit an existing command.
 
 ```bash
@@ -161,6 +174,7 @@ shed edit greet
 ```
 
 #### `shed cp <source> <destination>`
+
 Copy a command to a new name.
 
 ```bash
@@ -168,6 +182,7 @@ shed cp greet welcome
 ```
 
 #### `shed rm <name>`
+
 Remove a command.
 
 ```bash
@@ -179,6 +194,7 @@ shed rm old_command
 Secrets are stored encrypted in the database and can be referenced in commands.
 
 #### `shed secret add <key>`
+
 Add a new secret.
 
 ```bash
@@ -187,9 +203,11 @@ shed secret add github_token -d "GitHub Personal Access Token"
 ```
 
 Options:
+
 - `-d, --description`: Description of the secret
 
 #### `shed secret list`
+
 List all secrets (values are hidden).
 
 ```bash
@@ -197,6 +215,7 @@ shed secret list
 ```
 
 #### `shed secret edit <key>`
+
 Update a secret's value or description.
 
 ```bash
@@ -204,6 +223,7 @@ shed secret edit github_token
 ```
 
 #### `shed secret rm <key>`
+
 Remove a secret.
 
 ```bash
@@ -213,6 +233,7 @@ shed secret rm old_api_key
 ## Configuration
 
 Shed looks for configuration in the following locations (in order):
+
 1. `$SHED_DIR` environment variable
 2. `~/.config/shed/` (Linux/macOS)
 3. `~/Library/Application Support/shed/` (macOS)
@@ -237,6 +258,7 @@ password = "encryption-key"
 ### Command-Line Flags
 
 Global flags:
+
 - `--shed-dir`: Path to shed configuration directory
 - `-v, --verbose`: Enable verbose logging
 
@@ -296,7 +318,7 @@ make lint
 
 ```
 shed/
-├── cmd/                    # Command definitions
+├── cmd/                   # Command definitions
 │   ├── command/           # Command management commands
 │   ├── secret/            # Secret management commands
 │   ├── init.go            # Initialization command
@@ -335,33 +357,25 @@ go test -v ./internal/store/...
 
 ## Troubleshooting
 
-### Database Locked Error
-
-If you encounter "database is locked" errors:
-```bash
-# Check for stale lock files
-ls -la ~/.config/shed/
-
-# Remove lock files if shed is not running
-rm ~/.config/shed/*.lock
-```
-
 ### SQLCipher Not Found
 
 If you get SQLCipher errors during build:
 
 **Linux**:
+
 ```bash
 sudo apt-get install libsqlcipher-dev
 ```
 
 **macOS**:
+
 ```bash
 brew install sqlcipher
 ```
 
 **Windows**:
 Use MSYS2:
+
 ```bash
 pacman -S mingw-w64-x86_64-sqlcipher
 ```
@@ -369,11 +383,13 @@ pacman -S mingw-w64-x86_64-sqlcipher
 ### Configuration Not Found
 
 Ensure shed is initialized:
+
 ```bash
 shed init
 ```
 
 Or set the `SHED_DIR` environment variable:
+
 ```bash
 export SHED_DIR="/path/to/config"
 ```

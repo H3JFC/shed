@@ -3,13 +3,17 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
+      fromVersion:
+        description: "Base Version (e.g., v0.9.0)"
+        required: true
+        type: string
       version:
-        description: 'Version (e.g., v1.0.0)'
+        description: "Version (e.g., v1.0.0)"
         required: true
         type: string
 
 permissions:
-  contents: write  # Required for creating releases and tags
+  contents: write # Required for creating releases and tags
 
 jobs:
   validate:
@@ -42,16 +46,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for changelog generation
+          fetch-depth: 0 # Fetch all history for changelog generation
 
       - name: Generate changelog
         id: generate
         uses: requarks/changelog-action@v1
         with:
           token: ${{ github.token }}
-          tag: ${{ github.event.inputs.version }}
+          # tag: ${{ github.event.inputs.version }}
+          fromTag: ${{ github.event.inputs.fromVersion }}
+          toTag: ${{ github.event.inputs.version }}
           includeInvalidCommits: true
-          excludeTypes: ''
+          excludeTypes: ""
+
+      - name: Commit CHANGELOG.md
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          branch: main
+          commit_message: "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
+          file_pattern: CHANGELOG.md
 
   build:
     name: Build ${{ matrix.artifact_name }}
@@ -100,7 +113,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.1'
+          go-version: "1.25.1"
 
       # Linux dependencies
       - name: Install dependencies (Linux)
