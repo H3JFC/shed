@@ -54,9 +54,10 @@ jobs:
         with:
           token: ${{ github.token }}
           # tag: ${{ github.event.inputs.version }}
-          fromTag: ${{ github.event.inputs.fromVersion }}
-          toTag: ${{ github.event.inputs.version }}
-          includeInvalidCommits: true
+          fromTag: ${{ github.event.inputs.version }}
+          toTag: ${{ github.event.inputs.fromVersion }}
+          includeInvalidCommits: false
+          writeToFile: true
           excludeTypes: ""
 
       - name: Commit CHANGELOG.md
