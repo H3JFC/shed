@@ -16,6 +16,7 @@ import (
 )
 
 var Commit = "NOT SET"
+var Version = "NOT SET"
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
@@ -36,6 +37,10 @@ to quickly create a Cobra application.`,
 		}
 
 		logger.New(logger.ModeFromString(ll))
+
+		if ll == "verbose" {
+			logger.Info("Shed build information", "version", Version, "commit", Commit)
+		}
 
 		if !isInitCommand(c) {
 			initConfig(c.Flags().Lookup("shed-dir").Value.String())
@@ -75,6 +80,7 @@ func init() {
 	rootCmd.AddCommand(secret.Init())
 
 	// Register main commands
+	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(command.AddCmd)
 	rootCmd.AddCommand(command.ListCmd)
 	rootCmd.AddCommand(command.RunCmd)
@@ -123,6 +129,7 @@ func Init(shedDir string) error {
 
 	// Set defaults
 	viper.SetDefault("commit", Commit)
+	viper.SetDefault("version", Version)
 
 	// Read config file (it's okay if it doesn't exist)
 	if err := viper.ReadInConfig(); err != nil {

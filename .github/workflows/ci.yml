@@ -153,7 +153,9 @@ jobs:
           BUILD_TAGS: sqlcipher,${{ matrix.build-tag }}
           CGO_CFLAGS: ${{ matrix.os == 'windows-latest' && '-IC:/msys64/mingw64/include' || '' }}
           CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}
-        run: go build -tags="${BUILD_TAGS}" -o ${{ matrix.binary-name }} main.go
+        run: |
+          VERSION=$(git describe --tags --exact-match HEAD 2>/dev/null || echo "development")
+          go build -tags="${BUILD_TAGS}" -ldflags="-X h3jfc/shed/cmd.Commit=${{ github.sha }} -X h3jfc/shed/cmd.Version=${VERSION}" -o ${{ matrix.binary-name }} main.go
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
