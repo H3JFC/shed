@@ -174,7 +174,7 @@ jobs:
         run: |
           go build \
             -tags="${{ matrix.build_tags }}" \
-            -ldflags="-X h3jfc/shed/cmd.Commit=${{ github.sha }} -X h3jfc/shed/cmd.Version=${{ github.event.inputs.version }}" \
+            -ldflags="-X github.com/h3jfc/shed/cmd.Commit=${{ github.sha }} -X github.com/h3jfc/shed/cmd.Version=${{ github.event.inputs.version }}" \
             -o ${{ matrix.artifact_name }} \
             main.go
 

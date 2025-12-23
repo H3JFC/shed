@@ -3,11 +3,10 @@ package cmd
 import (
 	"errors"
 
+	"github.com/h3jfc/shed/internal/commands"
+	"github.com/h3jfc/shed/internal/config"
+	"github.com/h3jfc/shed/internal/logger"
 	"github.com/spf13/cobra"
-
-	"h3jfc/shed/internal/commands"
-	"h3jfc/shed/internal/config"
-	"h3jfc/shed/internal/logger"
 )
 
 var ErrShedAlreadyInitialized = errors.New("shed already initialized")

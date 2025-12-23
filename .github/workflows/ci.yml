@@ -155,7 +155,7 @@ jobs:
           CGO_LDFLAGS: ${{ matrix.os == 'windows-latest' && '-LC:/msys64/mingw64/lib' || '' }}
         run: |
           VERSION=$(git describe --tags --exact-match HEAD 2>/dev/null || echo "development")
-          go build -tags="${BUILD_TAGS}" -ldflags="-X h3jfc/shed/cmd.Commit=${{ github.sha }} -X h3jfc/shed/cmd.Version=${VERSION}" -o ${{ matrix.binary-name }} main.go
+          go build -tags="${BUILD_TAGS}" -ldflags="-X github.com/h3jfc/shed/cmd.Commit=${{ github.sha }} -X github.com/h3jfc/shed/cmd.Version=${VERSION}" -o ${{ matrix.binary-name }} main.go
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4

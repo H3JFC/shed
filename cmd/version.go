@@ -3,9 +3,8 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/h3jfc/shed/internal/logger"
 	"github.com/spf13/cobra"
-
-	"h3jfc/shed/internal/logger"
 )
 
 // versionCmd represents the version command.

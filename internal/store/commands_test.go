@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"h3jfc/shed/lib/brackets"
+	"github.com/h3jfc/shed/lib/brackets"
 )
 
 const (

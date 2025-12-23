@@ -9,9 +9,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/h3jfc/shed/lib/sqlite3"
 	"golang.org/x/term"
-
-	"h3jfc/shed/lib/sqlite3"
 )
 
 const (

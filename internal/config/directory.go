@@ -6,9 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/h3jfc/shed/internal/logger"
 	"github.com/spf13/viper"
-
-	"h3jfc/shed/internal/logger"
 )
 
 var (

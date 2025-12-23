@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"h3jfc/shed/internal/config"
-	"h3jfc/shed/internal/logger"
+	"github.com/h3jfc/shed/internal/config"
+	"github.com/h3jfc/shed/internal/logger"
 )
 
 const retryAttempts = 3

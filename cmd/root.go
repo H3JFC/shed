@@ -6,17 +6,18 @@ import (
 	"os"
 	"slices"
 
+	"github.com/h3jfc/shed/cmd/command"
+	"github.com/h3jfc/shed/cmd/secret"
+	"github.com/h3jfc/shed/internal/config"
+	"github.com/h3jfc/shed/internal/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"h3jfc/shed/cmd/command"
-	"h3jfc/shed/cmd/secret"
-	"h3jfc/shed/internal/config"
-	"h3jfc/shed/internal/logger"
 )
 
-var Commit = "NOT SET"
-var Version = "NOT SET"
+var (
+	Commit  = "NOT SET"
+	Version = "NOT SET"
+)
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
