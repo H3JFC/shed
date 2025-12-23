@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.0] - 2025-12-23
+### :memo: Documentation Changes
+- [`e88a617`](https://github.com/H3JFC/shed/commit/e88a617b07077917c42493cf9c0b73f3c9d8c8ad) - update CHANGELOG.md for main [skip ci] *(commit by [@H3JFC](https://github.com/H3JFC))*
+
+### :wrench: Chores
+- [`89a4f5d`](https://github.com/H3JFC/shed/commit/89a4f5d87b7835af4a2a1c969fef1acf04835613) - update release to just include version variable *(commit by [@H3JFC](https://github.com/H3JFC))*
+
+
 ## [v0.1.0] - 2025-12-21
 ### :sparkles: New Features
 - [`af1674e`](https://github.com/H3JFC/shed/commit/af1674e2a60c2dcdadce159efc0947dd3abcb1bf) - add version information to builds and CLI *(commit by [@H3JFC](https://github.com/H3JFC))*
@@ -26,3 +34,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`763627e`](https://github.com/H3JFC/shed/commit/763627ee3ff4677e3a1ce53881e30c5fa076e741) - fixing release CI *(commit by [@H3JFC](https://github.com/H3JFC))*
 
 [v0.1.0]: https://github.com/H3JFC/shed/compare/v0.0.0...v0.1.0
+[v0.2.0]: https://github.com/H3JFC/shed/compare/v0.1.0...v0.2.0
