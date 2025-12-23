@@ -43,7 +43,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"h3jfc/shed/internal/logger"
+	"github.com/h3jfc/shed/internal/logger"
 )
 
 const (

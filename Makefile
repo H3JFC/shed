@@ -45,21 +45,21 @@ help:
 
 build: deps
 	@echo "Building $(BINARY_NAME) with SQLCipher support..."
-	go build -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/cmd.Commit=$(COMMIT) -X h3jfc/shed/cmd.Version=$(VERSION)" -o ./$(BINARY_NAME) main.go
+	go build -tags="sqlcipher,$(OS_TAG)" -ldflags="-X github.com/h3jfc/shed/cmd.Commit=$(COMMIT) -X github.com/h3jfc/shed/cmd.Version=$(VERSION)" -o ./$(BINARY_NAME) main.go
 	@echo "✅ Built $(BINARY_NAME) successfully"
 
 debug-build: deps
 	@echo "Building a debug build of $(BINARY_NAME) with SQLCipher support..."
-	go build -gcflags=all="-N -l" -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/cmd.Commit=$(COMMIT) -X h3jfc/shed/cmd.Version=$(VERSION)" -o ./$(BINARY_NAME) main.go
+	go build -gcflags=all="-N -l" -tags="sqlcipher,$(OS_TAG)" -ldflags="-X github.com/h3jfc/shed/cmd.Commit=$(COMMIT) -X github.com/h3jfc/shed/cmd.Version=$(VERSION)" -o ./$(BINARY_NAME) main.go
 	@echo "✅ Built $(BINARY_NAME) successfully"
 
 shed: deps
 	@echo "Running application with SQLCipher support..."
-	go run -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/cmd.Commit=$(COMMIT) -X h3jfc/shed/cmd.Version=$(VERSION)" main.go
+	go run -tags="sqlcipher,$(OS_TAG)" -ldflags="-X github.com/h3jfc/shed/cmd.Commit=$(COMMIT) -X github.com/h3jfc/shed/cmd.Version=$(VERSION)" main.go
 
 install: deps
 	@echo "Building and installing $(BINARY_NAME) with SQLCipher support to system..."
-	go install -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/cmd.Commit=$(COMMIT) -X h3jfc/shed/cmd.Version=$(VERSION)" .
+	go install -tags="sqlcipher,$(OS_TAG)" -ldflags="-X github.com/h3jfc/shed/cmd.Commit=$(COMMIT) -X github.com/h3jfc/shed/cmd.Version=$(VERSION)" .
 	@echo "✅ Installed $(BINARY_NAME) to system PATH"
 
 lint: deps
@@ -87,7 +87,7 @@ lint-new: deps
 
 test: deps
 	@echo "Running all Go tests..."
-	go test -tags="sqlcipher,$(OS_TAG)" -ldflags="-X h3jfc/shed/cmd.Commit=$(COMMIT) -X h3jfc/shed/cmd.Version=$(VERSION)" -v ./...
+	go test -tags="sqlcipher,$(OS_TAG)" -ldflags="-X github.com/h3jfc/shed/cmd.Commit=$(COMMIT) -X github.com/h3jfc/shed/cmd.Version=$(VERSION)" -v ./...
 	@echo "✅ All tests completed"
 
 test-coverage: deps

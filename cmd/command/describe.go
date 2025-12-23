@@ -6,12 +6,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/h3jfc/shed/internal/logger"
+	"github.com/h3jfc/shed/internal/store"
+	"github.com/h3jfc/shed/lib/brackets"
+	"github.com/h3jfc/shed/lib/itertools"
 	"github.com/spf13/cobra"
-
-	"h3jfc/shed/internal/logger"
-	"h3jfc/shed/internal/store"
-	"h3jfc/shed/lib/brackets"
-	"h3jfc/shed/lib/itertools"
 )
 
 // DescribeCmd represents the describe command.

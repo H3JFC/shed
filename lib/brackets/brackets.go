@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"h3jfc/shed/lib/itertools"
+	"github.com/h3jfc/shed/lib/itertools"
 )
 
 var (

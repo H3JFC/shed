@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"h3jfc/shed/lib/sqlite3"
+	"github.com/h3jfc/shed/lib/sqlite3"
 )
 
 var database *sql.DB

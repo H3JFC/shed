@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/h3jfc/shed/internal/logger"
+	"github.com/h3jfc/shed/internal/store"
 	"github.com/spf13/cobra"
-
-	"h3jfc/shed/internal/logger"
-	"h3jfc/shed/internal/store"
 )
 
 var editSecretDescription string

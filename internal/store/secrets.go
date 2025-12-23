@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"h3jfc/shed/db"
+	"github.com/h3jfc/shed/db"
 )
 
 var ErrSecretNotFound = errors.New("secret not found")

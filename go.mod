@@ -1,4 +1,4 @@
-module h3jfc/shed
+module github.com/h3jfc/shed
 
 go 1.25.1
 

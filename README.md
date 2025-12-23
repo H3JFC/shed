@@ -1,5 +1,11 @@
 # Shed
 
+<p align="center">
+  <a href="https://github.com/H3JFC/shed/actions/workflows/main.yml"><img src="https://github.com/H3JFC/shed/actions/workflows/main.yml/badge.svg?branch=main" alt="Go"></a>
+  <a href="https://goreportcard.com/report/github.com/h3jfc/shed"><img src="https://goreportcard.com/badge/github.com/h3jfc/shed" alt="Go Report Card"></a>
+  <a href="https://pkg.go.dev/github.com/h3jfc/shed"><img src="https://pkg.go.dev/badge/github.com/h3jfc/shed.svg" alt="Go Reference"></a>
+</p>
+
 A secure CLI tool for storing and executing commonly used commands with parameter templating and secrets management.
 
 ## Overview

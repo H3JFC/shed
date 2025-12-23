@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"h3jfc/shed/internal/logger"
+	"github.com/h3jfc/shed/internal/logger"
 )
 
 var buf bytes.Buffer

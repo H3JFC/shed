@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/h3jfc/shed/internal/execute"
+	"github.com/h3jfc/shed/internal/logger"
+	"github.com/h3jfc/shed/internal/store"
+	"github.com/h3jfc/shed/lib/brackets"
 	"github.com/spf13/cobra"
-
-	"h3jfc/shed/internal/execute"
-	"h3jfc/shed/internal/logger"
-	"h3jfc/shed/internal/store"
-	"h3jfc/shed/lib/brackets"
 )
 
 const (

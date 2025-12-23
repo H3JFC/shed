@@ -8,13 +8,12 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/h3jfc/shed/db"
+	"github.com/h3jfc/shed/internal/logger"
+	"github.com/h3jfc/shed/lib/brackets"
+	"github.com/h3jfc/shed/lib/itertools"
+	"github.com/h3jfc/shed/lib/sqlite3"
 	"github.com/spf13/viper"
-
-	"h3jfc/shed/db"
-	"h3jfc/shed/internal/logger"
-	"h3jfc/shed/lib/brackets"
-	"h3jfc/shed/lib/itertools"
-	"h3jfc/shed/lib/sqlite3"
 )
 
 const (

@@ -9,9 +9,8 @@ import (
 	msqlite3 "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file" // Register file source driver
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	sheddb "github.com/h3jfc/shed/db"
 	_ "github.com/mattn/go-sqlite3" // Register SQLite3 driver with SQLCipher support
-
-	sheddb "h3jfc/shed/db"
 )
 
 const (
