@@ -18,7 +18,6 @@ Shed is a command-line interface (CLI) tool designed to help developers and syst
 - **Parameter Templating**: Define parameters in commands using `{{name|description}}` syntax
 - **Secrets Management**: Store sensitive information securely and reference with `{{!key}}` syntax
 - **Encrypted Database**: All data is stored in an encrypted SQLite database using SQLCipher
-- **Interactive Prompts**: Automatically prompts for parameter values when running commands
 - **Command Operations**: Add, list, edit, copy, describe, and remove commands
 - **Cross-Platform**: Supports Linux, macOS, and Windows
 
@@ -155,12 +154,9 @@ Output includes:
 Execute a stored command.
 
 ```bash
-shed run greet
-# Prompts: Enter value for name (person's name):
+shed run greet '{"name":"John"}'
 # Executes: echo 'Hello, John!'
 ```
-
-Shed will interactively prompt for any parameters or secrets needed by the command.
 
 #### `shed describe <name>`
 
